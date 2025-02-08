@@ -390,8 +390,17 @@ function createBigIntClass(params: BigIntParameter) {
         const modulo = this.toBigint();
         const b = a.toBigint();
         const x = exp.toBigint();
-        const res = b ** x % modulo;
-        return ProvableBigInt.fromBigint(res);
+        let result = 1n;
+        let base = b % modulo;
+        let exponent = x;
+        while (exponent > 0n) {
+          if (exponent & 1n) {
+            result = (result * base) % modulo;
+          }
+          base = (base * base) % modulo;
+          exponent >>= 1n;
+        }
+        return ProvableBigInt.fromBigint(result);
       });
       const exponentBits = exp.toBits();
 
@@ -402,19 +411,7 @@ function createBigIntClass(params: BigIntParameter) {
       for (let i = 0; i < exponentBits.length; i++) {
         // If current bit is 1, multiply result by base
         result = Provable.if(exponentBits[i], this.mul(result, base), result);
-
-        // Square the base
         base = this.mul(base, base);
-
-        // if (i % 100 === 0) {
-        //   if (global.gc) {
-        //     global.gc();
-        //   } else {
-        //     console.warn(
-        //       "Manual garbage collection is not enabled. Run Node.js with --expose-gc to enable it."
-        //     );
-        //   }
-        // }
       }
 
       ProvableBigInt.assertEquals(result, r);

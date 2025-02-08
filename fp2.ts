@@ -58,9 +58,7 @@ export class Fp2 extends Struct({
   }
 
   div(other: Fp2): Fp2 {
-    if (other.real.isZero() && other.imaginary.isZero()) {
-      throw new Error("Division by zero");
-    }
+    other.real.isZero().and(other.imaginary.isZero()).assertFalse();
 
     // (a + bi)(c - di)/((c + di)(c - di))
     // = (ac + bd + (bc - ad)i)/(c² + d²)

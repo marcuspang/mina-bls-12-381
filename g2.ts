@@ -1,4 +1,4 @@
-import { Bool, Provable, Struct } from "o1js";
+import { Bool, Provable, Struct, type Field } from "o1js";
 import { Fp } from "./fp";
 import { Fp2 } from "./fp2";
 
@@ -51,23 +51,31 @@ export class G2Point extends Struct({
     );
   }
 
+  toFields(): Field[] {
+    // TODO: to avoid type error
+    return this.x.real.toFields();
+  }
+
   isZero(): Bool {
     return this.isInfinity;
   }
 
   negate(): G2Point {
-    if (this.isZero()) return this;
-    return new G2Point({
-      x: this.x,
-      y: this.y.negate(),
-      isInfinity: Bool(false),
-    });
+    return Provable.if(
+      this.isZero(),
+      this,
+      new G2Point({
+        x: this.x,
+        y: this.y.negate(),
+        isInfinity: Bool(false),
+      })
+    );
   }
 
   add(other: G2Point): G2Point {
     // Handle special cases
-    if (this.isZero()) return other;
-    if (other.isZero()) return this;
+    if (this.isZero().equals(Bool(true))) return other;
+    if (other.isZero().equals(Bool(true))) return this;
 
     // Check if points are negatives of each other
     if (

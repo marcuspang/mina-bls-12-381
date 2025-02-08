@@ -1,0 +1,3 @@
+[submodule "lib/zkcrypto"]
+	path = lib/zkcrypto
+	url = https://github.com/zkcrypto/bls12_381
