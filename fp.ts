@@ -25,7 +25,7 @@ export class Fp extends Struct({
 
   static fromBigInt(x: bigint): Fp {
     return new Fp({
-      value: ProvableBigInt.fromBigint((x + P) % P),
+      value: ProvableBigInt.fromBigint(x < 0n ? (x % P) + P : x % P),
     });
   }
 
