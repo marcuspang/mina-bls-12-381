@@ -58,10 +58,11 @@ export class Fp extends Struct({
   div(other: Fp): Fp {
     const { quotient, remainder } = Fp.MODULUS.div(this.value, other.value);
 
-    // TODO: is there a better way to do this?
-    if (!ProvableBigInt.equals(remainder, ProvableBigInt.zero()).toBoolean()) {
-      throw new Error("Division resulted in a remainder");
-    }
+    const remainderIsZero = ProvableBigInt.equals(
+      remainder,
+      ProvableBigInt.zero()
+    );
+    remainderIsZero.assertFalse();
 
     return new Fp({
       value: quotient,
@@ -81,9 +82,7 @@ export class Fp extends Struct({
   }
 
   inverse(): Fp {
-    if (this.isZero().toBoolean()) {
-      throw new Error("Cannot invert zero");
-    }
+    this.isZero().assertFalse();
     // Fermat's Little Theorem
     return new Fp({
       value: Fp.MODULUS.pow(this.value, ProvableBigInt.fromBigint(P - 2n)),

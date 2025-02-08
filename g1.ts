@@ -36,17 +36,15 @@ export class G1Point extends Struct({
 
   // Check if point is on curve: y² = x³ + 4
   static isOnCurve(p: G1Point): Bool {
-    if (p.isInfinity.toBoolean()) return Bool(false);
-
-    const ySquare = p.y.square();
-    const xCube = p.x.pow(3n);
-
-    //  y² = x³ + 4
-    return Provable.equal(Fp, ySquare, xCube.add(G1Point.B));
+    return Provable.if(
+      p.isInfinity,
+      Bool(false),
+      Provable.equal(Fp, p.y.square(), p.x.pow(3n).add(G1Point.B))
+    );
   }
 
-  isZero(): boolean {
-    return this.isInfinity.toBoolean();
+  isZero(): Bool {
+    return this.isInfinity;
   }
 
   negate(): G1Point {
@@ -106,8 +104,10 @@ export class G1Point extends Struct({
     let current: G1Point = this;
     let bits = scalar;
 
-    while (!bits.isZero().toBoolean()) {
-      if (bits.mod(Fp.fromBigInt(2n)).equals(Fp.fromBigInt(1n)).toBoolean()) {
+    while (!bits.isZero().equals(Bool(true))) {
+      if (
+        bits.mod(Fp.fromBigInt(2n)).equals(Fp.fromBigInt(1n)).equals(Bool(true))
+      ) {
         result = result.add(current);
       }
       current = current.add(current);
@@ -117,13 +117,12 @@ export class G1Point extends Struct({
     return result;
   }
 
-  equals(other: G1Point) {
-    if (this.isZero() && other.isZero()) return true;
+  equals(other: G1Point): Bool {
+    if (this.isZero() && other.isZero()) return Bool(true);
     return this.x
       .equals(other.x)
       .and(this.y.equals(other.y))
-      .and(this.isInfinity.equals(other.isInfinity))
-      .toBoolean();
+      .and(this.isInfinity.equals(other.isInfinity));
   }
 
   // Convert to affine coordinates string representation

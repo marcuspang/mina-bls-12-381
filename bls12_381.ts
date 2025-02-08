@@ -69,11 +69,11 @@ export class BLS12_381_Signature extends Struct({
   }
 
   private static lineEval(R: G2Point, P: G2Point, Q: G1Point): Fp12 {
-    if (R.isInfinity.toBoolean()) return Fp12.one();
-    if (P.isInfinity.toBoolean()) return Fp12.one();
+    if (R.isInfinity.equals(Bool(true))) return Fp12.one();
+    if (P.isInfinity.equals(Bool(true))) return Fp12.one();
 
     let slope: Fp2;
-    if (R.equals(P).toBoolean()) {
+    if (R.equals(P).equals(Bool(true))) {
       // Point doubling case
       const three = Fp2.fromBigInt(3n, 0n);
       const two = Fp2.fromBigInt(2n, 0n);

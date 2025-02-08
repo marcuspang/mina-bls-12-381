@@ -1,4 +1,4 @@
-import { Bool, Field, Struct } from "o1js";
+import { Bool, Provable, Struct } from "o1js";
 import { Fp } from "./fp";
 import { Fp2 } from "./fp2";
 
@@ -44,17 +44,15 @@ export class G2Point extends Struct({
 
   // Check if point is on curve: y² = x³ + 4(1+i)
   static isOnCurve(p: G2Point): Bool {
-    if (p.isInfinity.toBoolean()) return Bool(false);
-
-    const ySquare = p.y.square();
-    const xCube = p.x.square().mul(p.x);
-    const right = xCube.add(G2Point.B);
-
-    return Fp2.equals(ySquare, right);
+    return Provable.if(
+      p.isInfinity,
+      Bool(false),
+      Provable.equal(Fp2, p.y.square(), p.x.mul(p.x).mul(p.x).add(G2Point.B))
+    );
   }
 
-  isZero(): boolean {
-    return this.isInfinity.toBoolean();
+  isZero(): Bool {
+    return this.isInfinity;
   }
 
   negate(): G2Point {
@@ -73,14 +71,15 @@ export class G2Point extends Struct({
 
     // Check if points are negatives of each other
     if (
-      Fp2.equals(this.x, other.x).toBoolean() &&
-      Fp2.equals(this.y, other.y.negate()).toBoolean()
+      Fp2.equals(this.x, other.x)
+        .and(Fp2.equals(this.y, other.y.negate()))
+        .equals(Bool(true))
     ) {
       return G2Point.ZERO;
     }
 
     // Point addition formulas for P ≠ Q
-    if (!Fp2.equals(this.x, other.x).toBoolean()) {
+    if (Fp2.equals(this.x, other.x).equals(Bool(false))) {
       const slope = other.y.sub(this.y).div(other.x.sub(this.x));
       const x3 = slope.square().sub(this.x).sub(other.x);
       const y3 = slope.mul(this.x.sub(x3)).sub(this.y);
@@ -92,8 +91,8 @@ export class G2Point extends Struct({
     }
 
     // Point doubling formula (P = Q)
-    if (this.equals(other).toBoolean()) {
-      if (this.y.isZero().toBoolean()) return G2Point.ZERO;
+    if (this.equals(other).equals(Bool(true))) {
+      if (this.y.isZero().equals(Bool(true))) return G2Point.ZERO;
 
       const three = Fp2.fromBigInt(3n, 0n);
       const two = Fp2.fromBigInt(2n, 0n);
@@ -121,8 +120,10 @@ export class G2Point extends Struct({
     let current: G2Point = this;
     let bits = scalar;
 
-    while (!bits.isZero().toBoolean()) {
-      if (bits.mod(Fp.fromBigInt(2n)).equals(Fp.fromBigInt(1n)).toBoolean()) {
+    while (bits.isZero().equals(Bool(false))) {
+      if (
+        bits.mod(Fp.fromBigInt(2n)).equals(Fp.fromBigInt(1n)).equals(Bool(true))
+      ) {
         result = result.add(current);
       }
       current = current.add(current);
