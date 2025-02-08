@@ -9,6 +9,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "fast-check": "^3.23.2",
     "o1js": "^2.2.0"
   }
 }
