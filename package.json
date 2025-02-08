@@ -1,0 +1,14 @@
+{
+  "name": "bls12-381",
+  "module": "index.ts",
+  "type": "module",
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "o1js": "^2.2.0"
+  }
+}
