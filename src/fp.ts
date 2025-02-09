@@ -127,10 +127,7 @@ export class Fp extends Struct({
     // Provable.log("[Fp1] adc", a, b, carry);
     Gadgets.rangeCheck64(a);
     Gadgets.rangeCheck64(b);
-    carry
-      .equals(Field(0))
-      .or(carry.equals(Field(1)))
-      .assertTrue("Carry must be 0 or 1");
+    Gadgets.rangeCheck64(carry);
 
     const ret = a.add(b).add(carry);
     Gadgets.rangeCheckN(128, ret);
@@ -151,10 +148,7 @@ export class Fp extends Struct({
 
     Gadgets.rangeCheck64(a);
     Gadgets.rangeCheck64(b);
-    borrow
-      .equals(Field(0))
-      .or(borrow.equals(Field(1)))
-      .assertTrue("Borrow must be 0 or 1");
+    Gadgets.rangeCheck64(borrow);
 
     const ret = Provable.witness(Field, () => {
       const aBig = a.toBigInt();
