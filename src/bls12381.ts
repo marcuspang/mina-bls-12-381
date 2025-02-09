@@ -89,7 +89,7 @@ export class BLS12381_Signature extends Struct({
 
     // Line equation: (Y - sX - (R.y - sR.x))
     const a = slope;
-    const b = new Fp2({ real: Q.y, imaginary: Fp.zero() });
+    const b = new Fp2({ c0: Q.y, c1: Fp.zero() });
     const c = R.y.sub(slope.mul(R.x));
 
     return new Fp12({

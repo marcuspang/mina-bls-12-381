@@ -2,8 +2,8 @@ import { type Bool, Provable, Struct } from "o1js";
 import { Fp } from "./fp";
 
 export class Fp2 extends Struct({
-  real: Fp,
-  imaginary: Fp,
+  c0: Fp,
+  c1: Fp,
 }) {
   private static readonly FROBENIUS_COEFFICIENTS = [
     // x^(p^0) = x^1 = x
@@ -17,17 +17,17 @@ export class Fp2 extends Struct({
 
   static fromBigInt(x: bigint, y: bigint): Fp2 {
     Provable.log("[Fp2] fromBigInt", x, y);
-    return new Fp2({ real: Fp.fromBigInt(x), imaginary: Fp.fromBigInt(y) });
+    return new Fp2({ c0: Fp.fromBigInt(x), c1: Fp.fromBigInt(y) });
   }
 
   static zero(): Fp2 {
     Provable.log("[Fp2] zero");
-    return new Fp2({ real: Fp.zero(), imaginary: Fp.zero() });
+    return new Fp2({ c0: Fp.zero(), c1: Fp.zero() });
   }
 
   static one(): Fp2 {
     Provable.log("[Fp2] one");
-    return new Fp2({ real: Fp.one(), imaginary: Fp.zero() });
+    return new Fp2({ c0: Fp.one(), c1: Fp.zero() });
   }
 
   isZero(): Bool {
@@ -38,78 +38,78 @@ export class Fp2 extends Struct({
   add(other: Fp2): Fp2 {
     Provable.log("[Fp2] add", other);
     return new Fp2({
-      real: this.real.add(other.real),
-      imaginary: this.imaginary.add(other.imaginary),
+      c0: this.c0.add(other.c0),
+      c1: this.c1.add(other.c1),
     });
   }
 
   sub(other: Fp2): Fp2 {
     Provable.log("[Fp2] sub", other);
     return new Fp2({
-      real: this.real.sub(other.real),
-      imaginary: this.imaginary.sub(other.imaginary),
+      c0: this.c0.sub(other.c0),
+      c1: this.c1.sub(other.c1),
     });
   }
 
   mul(other: Fp2): Fp2 {
     Provable.log("[Fp2] mul", other);
-    const ac = this.real.mul(other.real);
-    const bd = this.imaginary.mul(other.imaginary);
-    const ad = this.real.mul(other.imaginary);
-    const bc = this.imaginary.mul(other.real);
+    const ac = this.c0.mul(other.c0);
+    const bd = this.c1.mul(other.c1);
+    const ad = this.c0.mul(other.c1);
+    const bc = this.c1.mul(other.c0);
 
     return new Fp2({
-      real: ac.sub(bd),
-      imaginary: ad.add(bc),
+      c0: ac.sub(bd),
+      c1: ad.add(bc),
     });
   }
 
   div(other: Fp2): Fp2 {
     Provable.log("[Fp2] div", other);
-    other.real.isZero().and(other.imaginary.isZero()).assertFalse();
+    other.c0.isZero().and(other.c1.isZero()).assertFalse();
 
     // (a + bi)(c - di)/((c + di)(c - di))
     // = (ac + bd + (bc - ad)i)/(c² + d²)
-    const norm = other.real.square().add(other.imaginary.square());
+    const norm = other.c0.square().add(other.c1.square());
     const normInv = norm.inverse();
 
-    const ac = this.real.mul(other.real);
-    const bd = this.imaginary.mul(other.imaginary);
-    const bc = this.imaginary.mul(other.real);
-    const ad = this.real.mul(other.imaginary);
+    const ac = this.c0.mul(other.c0);
+    const bd = this.c1.mul(other.c1);
+    const bc = this.c1.mul(other.c0);
+    const ad = this.c0.mul(other.c1);
 
     return new Fp2({
-      real: ac.add(bd).mul(normInv),
-      imaginary: bc.sub(ad).mul(normInv),
+      c0: ac.add(bd).mul(normInv),
+      c1: bc.sub(ad).mul(normInv),
     });
   }
 
   // (a + bi)² = (a² - b²) + (2ab)i
   square(): Fp2 {
     Provable.log("[Fp2] square");
-    const a2 = this.real.square();
-    const b2 = this.imaginary.square();
-    const ab = this.real.mul(this.imaginary);
+    const a2 = this.c0.square();
+    const b2 = this.c1.square();
+    const ab = this.c0.mul(this.c1);
 
     return new Fp2({
-      real: a2.sub(b2),
-      imaginary: ab.add(ab),
+      c0: a2.sub(b2),
+      c1: ab.add(ab),
     });
   }
 
   negate(): Fp2 {
     Provable.log("[Fp2] negate");
     return new Fp2({
-      real: this.real.negate(),
-      imaginary: this.imaginary.negate(),
+      c0: this.c0.negate(),
+      c1: this.c1.negate(),
     });
   }
 
   conjugate(): Fp2 {
     Provable.log("[Fp2] conjugate");
     return new Fp2({
-      real: this.real,
-      imaginary: this.imaginary.negate(),
+      c0: this.c0,
+      c1: this.c1.negate(),
     });
   }
 
@@ -123,20 +123,20 @@ export class Fp2 extends Struct({
     }
     // Conjugate and multiply by coefficient
     return new Fp2({
-      real: this.real,
-      imaginary: this.imaginary.negate(),
+      c0: this.c0,
+      c1: this.c1.negate(),
     }).mul(Fp2.fromBigInt(coefficient[0], coefficient[1]));
   }
 
   inverse(): Fp2 {
     Provable.log("[Fp2] inverse");
     // 1/(a + bi) = (a - bi)/(a² + b²)
-    const norm = this.real.square().add(this.imaginary.square());
+    const norm = this.c0.square().add(this.c1.square());
     const normInv = norm.inverse();
 
     return new Fp2({
-      real: this.real.mul(normInv),
-      imaginary: this.imaginary.negate().mul(normInv),
+      c0: this.c0.mul(normInv),
+      c1: this.c1.negate().mul(normInv),
     });
   }
 
@@ -145,8 +145,8 @@ export class Fp2 extends Struct({
     // For BLS12-381, multiply by (1 + i)
     // (a + bi)(1 + i) = (a - b) + (a + b)i
     return new Fp2({
-      real: this.real.sub(this.imaginary),
-      imaginary: this.real.add(this.imaginary),
+      c0: this.c0.sub(this.c1),
+      c1: this.c0.add(this.c1),
     });
   }
 

@@ -1,4 +1,4 @@
-import { Bool, Provable, Struct, type Field } from "o1js";
+import { Bool, type Field, Provable, Struct } from "o1js";
 import { Fp } from "./fp";
 import { Fp2 } from "./fp2";
 
@@ -10,8 +10,8 @@ export class G2Point extends Struct({
 }) {
   // BLS12-381 curve parameters for G2: y² = x³ + 4(1+i)
   static readonly B = new Fp2({
-    real: Fp.fromBigInt(4n),
-    imaginary: Fp.fromBigInt(4n),
+    c0: Fp.fromBigInt(4n),
+    c1: Fp.fromBigInt(4n),
   });
 
   static ZERO = new G2Point({
@@ -22,22 +22,20 @@ export class G2Point extends Struct({
 
   static BASE = new G2Point({
     x: new Fp2({
-      real: Fp.fromBigInt(
+      c0: Fp.fromBigInt(
         0x024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8n
       ),
-      imaginary:
-        Fp.fromBigInt(
-          0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7en
-        ),
+      c1: Fp.fromBigInt(
+        0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7en
+      ),
     }),
     y: new Fp2({
-      real: Fp.fromBigInt(
+      c0: Fp.fromBigInt(
         0x0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801n
       ),
-      imaginary:
-        Fp.fromBigInt(
-          0x0606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79ben
-        ),
+      c1: Fp.fromBigInt(
+        0x0606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79ben
+      ),
     }),
     isInfinity: Bool(false),
   });
@@ -55,7 +53,7 @@ export class G2Point extends Struct({
   toFields(): Field[] {
     Provable.log("[G2Point] toFields", this);
     // TODO: to avoid type error
-    return this.x.real.toFields();
+    return this.x.c0.toFields();
   }
 
   isZero(): Bool {

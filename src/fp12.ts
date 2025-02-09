@@ -1,6 +1,6 @@
-import { Provable, Struct, type Bool } from "o1js";
-import { Fp6 } from "./fp6";
+import { type Bool, Provable, Struct } from "o1js";
 import { Fp2 } from "./fp2";
+import { Fp6 } from "./fp6";
 
 const FP12_FROBENIUS_COEFFICIENTS = [
   Fp2.fromBigInt(0x1n, 0x0n),
@@ -91,13 +91,14 @@ export class Fp12 extends Struct({
     Provable.log("[Fp12] mul", this, other);
     const aa = this.real.mul(other.real);
     const bb = this.imaginary.mul(other.imaginary);
-    const real = aa.sub(bb);
-    const imaginary = this.real
-      .add(this.imaginary)
-      .mul(other.real.add(other.imaginary))
-      .sub(aa)
-      .sub(bb);
-    return new Fp12({ real, imaginary });
+    const o = other.real.add(other.imaginary);
+    const c1 = this.imaginary.add(this.real).mul(o).sub(aa).sub(bb);
+    const c0 = bb.mulByNonresidue().add(aa);
+
+    return new Fp12({
+      real: c0,
+      imaginary: c1,
+    });
   }
 
   square(): Fp12 {
