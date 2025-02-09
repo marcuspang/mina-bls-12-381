@@ -1,4 +1,4 @@
-import { Provable, Struct } from "o1js";
+import { type Bool, Provable, Struct } from "o1js";
 import { Fp2 } from "./fp2";
 
 const FP6_FROBENIUS_COEFFICIENTS_1 = [
@@ -70,6 +70,13 @@ export class Fp6 extends Struct({
     });
   }
 
+  equals(other: Fp6): Bool {
+    Provable.log("[Fp6] equals", this, other);
+    return Fp2.equals(this.c0, other.c0)
+      .and(Fp2.equals(this.c1, other.c1))
+      .and(Fp2.equals(this.c2, other.c2));
+  }
+
   add(other: Fp6): Fp6 {
     Provable.log("[Fp6] add", this, other);
     return new Fp6({
@@ -90,31 +97,20 @@ export class Fp6 extends Struct({
 
   mul(other: Fp6): Fp6 {
     Provable.log("[Fp6] mul", this, other);
-    const v0 = this.c0.mul(other.c0);
-    const v1 = this.c1.mul(other.c1);
-    const v2 = this.c2.mul(other.c2);
+    const { c0, c1, c2 } = this;
+    const { c0: r0, c1: r1, c2: r2 } = other;
+
+    // v0 = a0·b0
+    const t0 = c0.mul(r0);
+    // v1 = a1·b1
+    const t1 = c1.mul(r1);
+    // v2 = a2·b2
+    const t2 = c2.mul(r2);
 
     return new Fp6({
-      c0: v0.add(
-        this.c1
-          .add(this.c2)
-          .mul(other.c1.add(other.c2))
-          .sub(v1)
-          .sub(v2)
-          .mulByNonresidue()
-      ),
-      c1: this.c0
-        .add(this.c1)
-        .mul(other.c0.add(other.c1))
-        .sub(v0)
-        .sub(v1)
-        .add(v2.mulByNonresidue()),
-      c2: this.c0
-        .add(this.c2)
-        .mul(other.c0.add(other.c2))
-        .sub(v0)
-        .add(v1)
-        .sub(v2),
+      c0: t0.add(c1.add(c2).mul(r1.add(r2)).sub(t1).sub(t2).mulByNonresidue()),
+      c1: c0.add(c1).mul(r0.add(r1)).sub(t0).sub(t1).add(t2.mulByNonresidue()),
+      c2: c0.add(c2).mul(r0.add(r2)).sub(t0).add(t1).sub(t2),
     });
   }
 
@@ -172,19 +168,21 @@ export class Fp6 extends Struct({
 
   inverse(): Fp6 {
     Provable.log("[Fp6] inverse", this);
-    const c0 = this.c0.square().sub(this.c1.mul(this.c2).mulByNonresidue());
-    const c1 = this.c2.square().mulByNonresidue().sub(this.c0.mul(this.c1));
-    const c2 = this.c1.square().sub(this.c0.mul(this.c2));
-    const t = this.c0
-      .mul(c0)
-      .add(this.c1.mul(c1))
-      .add(this.c2.mul(c2))
-      .inverse();
+    const { c0, c1, c2 } = this;
 
+    // t0 = c0² - (c2 * c1 * ξ)
+    const t0 = c0.square().sub(c2.mul(c1).mulByNonresidue());
+    // t1 = (c2² * ξ) - (c0 * c1)
+    const t1 = c2.square().mulByNonresidue().sub(c0.mul(c1));
+    // t2 = c1² - (c0 * c2)
+    const t2 = c1.square().sub(c0.mul(c2));
+
+    const determinant = c0.mul(t0).add(c2.mul(t1)).add(c1.mul(t2));
+    const invDet = determinant.inverse();
     return new Fp6({
-      c0: c0.mul(t),
-      c1: c1.mul(t),
-      c2: c2.mul(t),
+      c0: t0.mul(invDet),
+      c1: t1.mul(invDet),
+      c2: t2.mul(invDet),
     });
   }
 }
