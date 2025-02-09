@@ -132,14 +132,15 @@ export class Fp extends Struct({
     const ret = a.add(b).add(carry);
     Gadgets.rangeCheckN(128, ret);
 
+    const lower = Field(Gadgets.and(ret, Field(0xffff_ffff_ffff_ffffn), 128));
     const upper = Provable.witness(Field, () => {
       return ret.toBigInt() >> 64n;
     });
 
-    return [
-      Field(Gadgets.and(ret, Field(0xffff_ffff_ffff_ffffn), 128)), // lower 64 bits
-      upper, // upper bits as carry
-    ];
+    Gadgets.rangeCheck64(lower);
+    Gadgets.rangeCheck64(upper);
+
+    return [lower, upper];
   }
 
   /// Compute a - (b + borrow), returning the result and the new borrow.
@@ -153,15 +154,18 @@ export class Fp extends Struct({
     const ret = Provable.witness(Field, () => {
       const aBig = a.toBigInt();
       const bBig = b.toBigInt();
-      const borrowBig = borrow.toBigInt();
+      const borrowBig = borrow.toBigInt() >> 63n;
 
       // wrapping sub
-      return (aBig - bBig - borrowBig) & 0xffff_ffff_ffff_ffffn;
+      return aBig - bBig - borrowBig;
     });
+    const lower = Field(Gadgets.and(ret, Field(0xffff_ffff_ffff_ffffn), 128));
+    const upper = Provable.witness(Field, () => ret.toBigInt() >> 64n);
 
-    Gadgets.rangeCheck64(ret);
-    const carry = Provable.witness(Field, () => ret.toBigInt() >> 64n);
-    return [ret, carry];
+    Gadgets.rangeCheck64(lower);
+    Gadgets.rangeCheck64(upper);
+
+    return [lower, upper];
   }
 
   /// Compute a + (b * c) + carry, returning the result and the new carry over.
@@ -177,19 +181,19 @@ export class Fp extends Struct({
       const mul = b.toBigInt() * c.toBigInt();
       return a.toBigInt() + mul + carry.toBigInt();
     });
-
     Gadgets.rangeCheckN(128, ret);
 
+    const lower = Field(Gadgets.and(ret, Field(0xffff_ffff_ffff_ffffn), 128));
     const upper = Provable.witness(Field, () => ret.toBigInt() >> 64n);
 
-    return [Field(Gadgets.and(ret, Field(0xffff_ffff_ffff_ffffn), 128)), upper];
+    Gadgets.rangeCheck64(lower);
+    Gadgets.rangeCheck64(upper);
+
+    return [lower, upper];
   }
 
   add(other: Fp): Fp {
     // Provable.log("[Fp1] add", other);
-    this.checkRange();
-    other.checkRange();
-
     let [d0, d1, d2, d3, d4, d5] = [
       Field(0),
       Field(0),
@@ -211,25 +215,18 @@ export class Fp extends Struct({
 
   subtractP(): Fp {
     // Provable.log("[Fp1] subtractP");
-    let [r0, r1, r2, r3, r4, r5] = [
-      Field(0),
-      Field(0),
-      Field(0),
-      Field(0),
-      Field(0),
-      Field(0),
-    ];
+    const r = [Field(0), Field(0), Field(0), Field(0), Field(0), Field(0)];
     let borrow = Field(0);
 
-    [r0, borrow] = Fp.sbb(this.value[0], Fp.MODULUS[0], Field(0));
-    [r1, borrow] = Fp.sbb(this.value[1], Fp.MODULUS[1], borrow);
-    [r2, borrow] = Fp.sbb(this.value[2], Fp.MODULUS[2], borrow);
-    [r3, borrow] = Fp.sbb(this.value[3], Fp.MODULUS[3], borrow);
-    [r4, borrow] = Fp.sbb(this.value[4], Fp.MODULUS[4], borrow);
-    [r5, borrow] = Fp.sbb(this.value[5], Fp.MODULUS[5], borrow);
+    [r[0], borrow] = Fp.sbb(this.value[0], Fp.MODULUS[0], Field(0));
+    [r[1], borrow] = Fp.sbb(this.value[1], Fp.MODULUS[1], borrow);
+    [r[2], borrow] = Fp.sbb(this.value[2], Fp.MODULUS[2], borrow);
+    [r[3], borrow] = Fp.sbb(this.value[3], Fp.MODULUS[3], borrow);
+    [r[4], borrow] = Fp.sbb(this.value[4], Fp.MODULUS[4], borrow);
+    [r[5], borrow] = Fp.sbb(this.value[5], Fp.MODULUS[5], borrow);
 
     return new Fp({
-      value: [r0, r1, r2, r3, r4, r5],
+      value: r,
     });
   }
 
@@ -256,7 +253,6 @@ export class Fp extends Struct({
 
   square(): Fp {
     // Provable.log("[Fp1] square");
-    this.checkRange();
 
     const t = [
       Field(0),
@@ -355,42 +351,35 @@ export class Fp extends Struct({
   negate(): Fp {
     // Provable.log("[Fp1] negate");
 
-    let [r0, r1, r2, r3, r4, r5] = [
-      Field(0),
-      Field(0),
-      Field(0),
-      Field(0),
-      Field(0),
-      Field(0),
-    ];
+    const r = [Field(0), Field(0), Field(0), Field(0), Field(0), Field(0)];
     let borrow = Field(0);
 
-    [r0, borrow] = Fp.sbb(Fp.MODULUS[0], this.value[0], Field(0));
-    [r1, borrow] = Fp.sbb(Fp.MODULUS[1], this.value[1], borrow);
-    [r2, borrow] = Fp.sbb(Fp.MODULUS[2], this.value[2], borrow);
-    [r3, borrow] = Fp.sbb(Fp.MODULUS[3], this.value[3], borrow);
-    [r4, borrow] = Fp.sbb(Fp.MODULUS[4], this.value[4], borrow);
-    [r5, borrow] = Fp.sbb(Fp.MODULUS[5], this.value[5], borrow);
+    [r[0], borrow] = Fp.sbb(Fp.MODULUS[0], this.value[0], Field(0));
+    [r[1], borrow] = Fp.sbb(Fp.MODULUS[1], this.value[1], borrow);
+    [r[2], borrow] = Fp.sbb(Fp.MODULUS[2], this.value[2], borrow);
+    [r[3], borrow] = Fp.sbb(Fp.MODULUS[3], this.value[3], borrow);
+    [r[4], borrow] = Fp.sbb(Fp.MODULUS[4], this.value[4], borrow);
+    [r[5], borrow] = Fp.sbb(Fp.MODULUS[5], this.value[5], borrow);
 
     const isZero = Gadgets.or(
       Gadgets.or(
-        Gadgets.or(Gadgets.or(Gadgets.or(r0, r1, 64), r2, 64), r3, 64),
-        r4,
+        Gadgets.or(Gadgets.or(Gadgets.or(r[0], r[1], 64), r[2], 64), r[3], 64),
+        r[4],
         64
       ),
-      r5,
+      r[5],
       64
     ).equals(Field(0));
-    const mask = Provable.if(isZero, Field(0xffffffffffffffffn), Field(0n));
+    const mask = Provable.if(isZero, Field(0xffffffffffffffffn), Field(0));
 
     return new Fp({
       value: [
-        Gadgets.and(r0, mask, 64),
-        Gadgets.and(r1, mask, 64),
-        Gadgets.and(r2, mask, 64),
-        Gadgets.and(r3, mask, 64),
-        Gadgets.and(r4, mask, 64),
-        Gadgets.and(r5, mask, 64),
+        Gadgets.and(r[0], mask, 64),
+        Gadgets.and(r[1], mask, 64),
+        Gadgets.and(r[2], mask, 64),
+        Gadgets.and(r[3], mask, 64),
+        Gadgets.and(r[4], mask, 64),
+        Gadgets.and(r[5], mask, 64),
       ],
     });
   }
@@ -543,8 +532,6 @@ export class Fp extends Struct({
    */
   mul(other: Fp): Fp {
     // Provable.log("[Fp1] mul", other);
-    this.checkRange();
-    other.checkRange();
 
     const t = [
       Field(0),
@@ -624,12 +611,6 @@ export class Fp extends Struct({
       t[10],
       t[11]
     );
-  }
-
-  private checkRange() {
-    for (let i = 0; i < 6; i++) {
-      Gadgets.rangeCheck64(this.value[i]);
-    }
   }
 
   sqrt(): Fp {

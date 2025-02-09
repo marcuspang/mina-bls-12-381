@@ -1,9 +1,10 @@
 {
   "name": "bls12-381",
-  "module": "index.ts",
+  "module": "src/run.ts",
   "type": "module",
   "scripts": {
-    "start": "bun run index.ts"
+    "start": "bun run src/run.ts",
+    "benchmark": "./benchmark.sh"
   },
   "devDependencies": {
     "@types/bun": "latest"

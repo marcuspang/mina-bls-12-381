@@ -1,0 +1,10 @@
+add: 235 rows
+div: 3756 rows
+inverse: 1849 rows
+mod: 6067 rows
+mul: 1909 rows
+negate: 160 rows
+pow: 0 rows
+sqrt: 6317 rows
+square: 4467 rows
+sub: 394 rows
