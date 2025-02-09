@@ -1,5 +1,5 @@
 import { Bool, ZkProgram } from "o1js";
-import { BLS12_381_Signature } from "./bls12_381";
+import { BLS12381_Signature } from "./bls12381";
 import { G1Point } from "./g1";
 import { G2Point } from "./g2";
 
@@ -10,15 +10,15 @@ export const blsVerify = ZkProgram({
 
   methods: {
     verifyBLS: {
-      privateInputs: [BLS12_381_Signature, G2Point],
+      privateInputs: [BLS12381_Signature, G2Point],
 
       async method(
         message: G1Point,
-        signature: BLS12_381_Signature,
+        signature: BLS12381_Signature,
         publicKey: G2Point
       ) {
         return {
-          publicOutput: BLS12_381_Signature.verify(
+          publicOutput: BLS12381_Signature.verify(
             publicKey,
             message,
             signature
@@ -41,7 +41,7 @@ await blsVerify.compile({ forceRecompile: false });
 console.timeEnd("compile");
 
 const messagePoint = G1Point.ZERO;
-const signature = new BLS12_381_Signature({
+const signature = new BLS12381_Signature({
   R: G1Point.ZERO,
   S: G1Point.ZERO,
 });

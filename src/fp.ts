@@ -10,6 +10,10 @@ export class Fp extends Struct({
   // least significant limb at index 0
   value: Provable.Array(Field, 6),
 }) {
+  private static ZERO = new Fp({
+    value: [Field(0n), Field(0n), Field(0n), Field(0n), Field(0n), Field(0n)],
+  });
+
   static MODULUS = [
     Field(0xb9fe_ffff_ffff_aaabn),
     Field(0x1eab_fffe_b153_ffffn),
@@ -42,16 +46,15 @@ export class Fp extends Struct({
   static INV = 0x89f3_fffc_fffc_fffdn; // -p^-1 mod 2^64
 
   static fromBigInt(num: bigint): Fp {
-    Provable.log("[Fp1] fromBigInt", num);
-    if (num >= P) {
-      throw new Error("Input must be less than field modulus");
-    }
+    // Provable.log("[Fp1] fromBigInt", num);
     if (num < 0n) {
-      throw new Error("Input must be non-negative.");
+      num = num % P;
+      if (num < 0n) num += P;
+    } else if (num >= P) {
+      num = num % P;
     }
 
     const mask = 0xffff_ffff_ffff_ffffn;
-    // (a.R^0 * R^2) / R = a.R
     const tmp = new Fp({
       value: [
         Field(num & mask),
@@ -63,35 +66,30 @@ export class Fp extends Struct({
       ],
     });
 
-    // Convert to Montgomery form by multiplying by R2
     return tmp.mul(Fp.fromFields(Fp.R2));
   }
 
   static fromFields(values: Field[]): Fp {
-    Provable.log("[Fp1] fromFields", values);
+    // Provable.log("[Fp1] fromFields", values);
     if (values.length !== 6) {
       throw new Error("Invalid number of fields");
     }
-
     return new Fp({ value: values });
   }
 
   toFields(): Field[] {
-    Provable.log("[Fp1] toFields");
-
+    // Provable.log("[Fp1] toFields");
     return this.value;
   }
 
   static zero(): Fp {
-    Provable.log("[Fp1] zero");
-    return new Fp({
-      value: [Field(0n), Field(0n), Field(0n), Field(0n), Field(0n), Field(0n)],
-    });
+    // Provable.log("[Fp1] zero");
+    return Fp.ZERO;
   }
 
   static one(): Fp {
-    Provable.log("[Fp1] one");
-    return Fp.fromFields(Fp.R); // One in Montgomery form
+    // Provable.log("[Fp1] one");
+    return Fp.fromFields(Fp.R);
   }
 
   /**
@@ -99,7 +97,7 @@ export class Fp extends Struct({
    * The result is in standard (non-Montgomery) form.
    */
   toBigInt(): bigint {
-    Provable.log("[Fp1] toBigInt");
+    // Provable.log("[Fp1] toBigInt");
     // Convert from Montgomery form by computing
     // (a.R) / R = a
     const reduced = this.montgomeryReduce(
@@ -117,24 +115,24 @@ export class Fp extends Struct({
       Field(0)
     );
 
-    // Combine limbs into a single BigInt
     let result = 0n;
     for (let i = 5; i >= 0; i--) {
       result = (result << 64n) + reduced.value[i].toBigInt();
     }
-
     return result;
   }
 
   /// Compute a + b + carry, returning the result and the new carry over.
   static adc(a: Field, b: Field, carry: Field): [Field, Field] {
-    Provable.log("[Fp1] adc", a, b, carry);
+    // Provable.log("[Fp1] adc", a, b, carry);
     Gadgets.rangeCheck64(a);
     Gadgets.rangeCheck64(b);
-    Gadgets.rangeCheck64(carry);
+    carry
+      .equals(Field(0))
+      .or(carry.equals(Field(1)))
+      .assertTrue("Carry must be 0 or 1");
 
     const ret = a.add(b).add(carry);
-
     Gadgets.rangeCheckN(128, ret);
 
     const upper = Provable.witness(Field, () => {
@@ -149,11 +147,14 @@ export class Fp extends Struct({
 
   /// Compute a - (b + borrow), returning the result and the new borrow.
   static sbb(a: Field, b: Field, borrow: Field): [Field, Field] {
-    Provable.log("[Fp1] sbb", a, b, borrow);
+    // Provable.log("[Fp1] sbb", a, b, borrow);
 
     Gadgets.rangeCheck64(a);
     Gadgets.rangeCheck64(b);
-    Gadgets.rangeCheck64(borrow);
+    borrow
+      .equals(Field(0))
+      .or(borrow.equals(Field(1)))
+      .assertTrue("Borrow must be 0 or 1");
 
     const ret = Provable.witness(Field, () => {
       const aBig = a.toBigInt();
@@ -165,16 +166,13 @@ export class Fp extends Struct({
     });
 
     Gadgets.rangeCheck64(ret);
-
-    const carry = Provable.witness(Field, () => {
-      return ret.toBigInt() >> 64n;
-    });
+    const carry = Provable.witness(Field, () => ret.toBigInt() >> 64n);
     return [ret, carry];
   }
 
   /// Compute a + (b * c) + carry, returning the result and the new carry over.
   static mac(a: Field, b: Field, c: Field, carry: Field): [Field, Field] {
-    Provable.log("[Fp1] mac", a, b, c);
+    // Provable.log("[Fp1] mac", a, b, c);
 
     Gadgets.rangeCheck64(a);
     Gadgets.rangeCheck64(b);
@@ -188,26 +186,26 @@ export class Fp extends Struct({
 
     Gadgets.rangeCheckN(128, ret);
 
-    const upper = Provable.witness(Field, () => {
-      return ret.toBigInt() >> 64n;
-    });
+    const upper = Provable.witness(Field, () => ret.toBigInt() >> 64n);
 
     return [Field(Gadgets.and(ret, Field(0xffff_ffff_ffff_ffffn), 128)), upper];
   }
 
   add(other: Fp): Fp {
-    Provable.log("[Fp1] add", other);
+    // Provable.log("[Fp1] add", other);
+    this.checkRange();
+    other.checkRange();
 
     let [d0, d1, d2, d3, d4, d5] = [
-      Field(0n),
-      Field(0n),
-      Field(0n),
-      Field(0n),
-      Field(0n),
-      Field(0n),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
     ];
-    let carry = Field(0n);
-    [d0, carry] = Fp.adc(this.value[0], other.value[0], Field(0n));
+    let carry = Field(0);
+    [d0, carry] = Fp.adc(this.value[0], other.value[0], Field(0));
     [d1, carry] = Fp.adc(this.value[1], other.value[1], carry);
     [d2, carry] = Fp.adc(this.value[2], other.value[2], carry);
     [d3, carry] = Fp.adc(this.value[3], other.value[3], carry);
@@ -218,7 +216,7 @@ export class Fp extends Struct({
   }
 
   subtractP(): Fp {
-    Provable.log("[Fp1] subtractP");
+    // Provable.log("[Fp1] subtractP");
     let [r0, r1, r2, r3, r4, r5] = [
       Field(0),
       Field(0),
@@ -242,19 +240,19 @@ export class Fp extends Struct({
   }
 
   sub(other: Fp): Fp {
-    Provable.log("[Fp1] sub", other);
+    // Provable.log("[Fp1] sub", other);
     return other.negate().add(this);
   }
 
   div(other: Fp): Fp {
-    Provable.log("[Fp1] div", other);
+    // Provable.log("[Fp1] div", other);
     return this.mul(other.inverse());
   }
 
   mod(other: Fp): Fp {
-    Provable.log("[Fp1] mod", other);
+    // Provable.log("[Fp1] mod", other);
 
-    other.isZero().assertFalse();
+    other.isZero().assertFalse("Cannot divide by zero");
 
     const inverse = other.inverse();
     const quotient = this.mul(inverse);
@@ -263,10 +261,24 @@ export class Fp extends Struct({
   }
 
   square(): Fp {
-    Provable.log("[Fp1] square");
-    let t = [0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n].map(Field);
+    // Provable.log("[Fp1] square");
+    this.checkRange();
 
-    // First handle diagonal terms
+    const t = [
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+    ];
+
     let carry = Field(0);
     for (let i = 0; i < 6; i++) {
       [t[i * 2], carry] = Fp.mac(
@@ -320,7 +332,7 @@ export class Fp extends Struct({
    * Returns null if this element is zero.
    */
   inverse(): Fp {
-    Provable.log("[Fp1] inverse");
+    // Provable.log("[Fp1] inverse");
 
     // Using Fermat's little theorem, we raise to p-2:
     // a^(p-2) ≡ a^(-1) mod p, if a ≠ 0
@@ -333,32 +345,21 @@ export class Fp extends Struct({
     //   0x4b1ba7b6434bacd7,
     //   0x1a0111ea397fe69a
     // ]
-    this.isZero().assertFalse();
-
-    // const inv = this.powVartime([
-    //   Field(0xb9fe_ffff_ffff_aaa9n),
-    //   Field(0x1eab_fffe_b153_ffffn),
-    //   Field(0x6730_d2a0_f6b0_f624n),
-    //   Field(0x6477_4b84_f385_12bfn),
-    //   Field(0x4b1b_a7b6_434b_acd7n),
-    //   Field(0x1a01_11ea_397f_e69an),
-    // ]);
-    const inv = this.pow(Fp.fromBigInt(P - 2n));
-
-    return inv;
+    this.isZero().assertFalse("Cannot inverse zero");
+    return this.pow(Fp.fromBigInt(P - 2n));
   }
 
   /**
    * Returns true if this element is zero.
    */
   isZero(): Bool {
-    Provable.log("[Fp1] isZero");
+    // Provable.log("[Fp1] isZero");
 
     return this.equals(Fp.zero());
   }
 
   negate(): Fp {
-    Provable.log("[Fp1] negate");
+    // Provable.log("[Fp1] negate");
 
     let [r0, r1, r2, r3, r4, r5] = [
       Field(0),
@@ -414,21 +415,21 @@ export class Fp extends Struct({
     t10: Field,
     t11: Field
   ): Fp {
-    Provable.log(
-      "[Fp1] montgomeryReduce",
-      t0,
-      t1,
-      t2,
-      t3,
-      t4,
-      t5,
-      t6,
-      t7,
-      t8,
-      t9,
-      t10,
-      t11
-    );
+    // Provable.log(
+    //   "[Fp1] montgomeryReduce",
+    //   t0,
+    //   t1,
+    //   t2,
+    //   t3,
+    //   t4,
+    //   t5,
+    //   t6,
+    //   t7,
+    //   t8,
+    //   t9,
+    //   t10,
+    //   t11
+    // );
 
     // First round of reduction
     let [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11] = [
@@ -446,81 +447,67 @@ export class Fp extends Struct({
       Field(0),
     ];
     let carry = Field(0);
-    let k = Provable.witness(Field, () => {
-      const result = t0.mul(Fp.INV);
-      return result.toBigInt() % 0xffff_ffff_ffff_ffffn;
-    });
-    [r0, carry] = Fp.mac(t0, k, Fp.MODULUS[0], Field(0));
-    [r1, carry] = Fp.mac(t1, k, Fp.MODULUS[1], carry);
-    [r2, carry] = Fp.mac(t2, k, Fp.MODULUS[2], carry);
-    [r3, carry] = Fp.mac(t3, k, Fp.MODULUS[3], carry);
-    [r4, carry] = Fp.mac(t4, k, Fp.MODULUS[4], carry);
-    [r5, carry] = Fp.mac(t5, k, Fp.MODULUS[5], carry);
+
+    const kValues = Provable.witnessFields(6, () => [
+      t0.mul(Fp.INV).toBigInt() % 0xffffffffffffffffn,
+      t1.mul(Fp.INV).toBigInt() % 0xffffffffffffffffn,
+      t2.mul(Fp.INV).toBigInt() % 0xffffffffffffffffn,
+      t3.mul(Fp.INV).toBigInt() % 0xffffffffffffffffn,
+      t4.mul(Fp.INV).toBigInt() % 0xffffffffffffffffn,
+      t5.mul(Fp.INV).toBigInt() % 0xffffffffffffffffn,
+    ]);
+
+    [r0, carry] = Fp.mac(t0, kValues[0], Fp.MODULUS[0], Field(0));
+    [r1, carry] = Fp.mac(t1, kValues[0], Fp.MODULUS[1], carry);
+    [r2, carry] = Fp.mac(t2, kValues[0], Fp.MODULUS[2], carry);
+    [r3, carry] = Fp.mac(t3, kValues[0], Fp.MODULUS[3], carry);
+    [r4, carry] = Fp.mac(t4, kValues[0], Fp.MODULUS[4], carry);
+    [r5, carry] = Fp.mac(t5, kValues[0], Fp.MODULUS[5], carry);
     [r6, r7] = Fp.adc(t6, Field(0), carry);
 
     // Second round
-    k = Provable.witness(Field, () => {
-      const result = r1.mul(Fp.INV);
-      return result.toBigInt() % 0xffff_ffff_ffff_ffffn;
-    });
-    [r1, carry] = Fp.mac(r1, k, Fp.MODULUS[0], Field(0));
-    [r2, carry] = Fp.mac(r2, k, Fp.MODULUS[1], carry);
-    [r3, carry] = Fp.mac(r3, k, Fp.MODULUS[2], carry);
-    [r4, carry] = Fp.mac(r4, k, Fp.MODULUS[3], carry);
-    [r5, carry] = Fp.mac(r5, k, Fp.MODULUS[4], carry);
-    [r6, carry] = Fp.mac(r6, k, Fp.MODULUS[5], carry);
+    [r1, carry] = Fp.mac(r1, kValues[1], Fp.MODULUS[0], Field(0));
+    [r2, carry] = Fp.mac(r2, kValues[1], Fp.MODULUS[1], carry);
+    [r3, carry] = Fp.mac(r3, kValues[1], Fp.MODULUS[2], carry);
+    [r4, carry] = Fp.mac(r4, kValues[1], Fp.MODULUS[3], carry);
+    [r5, carry] = Fp.mac(r5, kValues[1], Fp.MODULUS[4], carry);
+    [r6, carry] = Fp.mac(r6, kValues[1], Fp.MODULUS[5], carry);
     [r7, r8] = Fp.adc(t7, r7, carry);
 
     // Third round
-    k = Provable.witness(Field, () => {
-      const result = r2.mul(Fp.INV);
-      return result.toBigInt() % 0xffff_ffff_ffff_ffffn;
-    });
-    [r2, carry] = Fp.mac(r2, k, Fp.MODULUS[0], Field(0));
-    [r3, carry] = Fp.mac(r3, k, Fp.MODULUS[1], carry);
-    [r4, carry] = Fp.mac(r4, k, Fp.MODULUS[2], carry);
-    [r5, carry] = Fp.mac(r5, k, Fp.MODULUS[3], carry);
-    [r6, carry] = Fp.mac(r6, k, Fp.MODULUS[4], carry);
-    [r7, carry] = Fp.mac(r7, k, Fp.MODULUS[5], carry);
+    [r2, carry] = Fp.mac(r2, kValues[2], Fp.MODULUS[0], Field(0));
+    [r3, carry] = Fp.mac(r3, kValues[2], Fp.MODULUS[1], carry);
+    [r4, carry] = Fp.mac(r4, kValues[2], Fp.MODULUS[2], carry);
+    [r5, carry] = Fp.mac(r5, kValues[2], Fp.MODULUS[3], carry);
+    [r6, carry] = Fp.mac(r6, kValues[2], Fp.MODULUS[4], carry);
+    [r7, carry] = Fp.mac(r7, kValues[2], Fp.MODULUS[5], carry);
     [r8, r9] = Fp.adc(t8, r8, carry);
 
     // Fourth round
-    k = Provable.witness(Field, () => {
-      const result = r3.mul(Fp.INV);
-      return result.toBigInt() % 0xffff_ffff_ffff_ffffn;
-    });
-    [r3, carry] = Fp.mac(r3, k, Fp.MODULUS[0], Field(0));
-    [r4, carry] = Fp.mac(r4, k, Fp.MODULUS[1], carry);
-    [r5, carry] = Fp.mac(r5, k, Fp.MODULUS[2], carry);
-    [r6, carry] = Fp.mac(r6, k, Fp.MODULUS[3], carry);
-    [r7, carry] = Fp.mac(r7, k, Fp.MODULUS[4], carry);
-    [r8, carry] = Fp.mac(r8, k, Fp.MODULUS[5], carry);
+    [r3, carry] = Fp.mac(r3, kValues[3], Fp.MODULUS[0], Field(0));
+    [r4, carry] = Fp.mac(r4, kValues[3], Fp.MODULUS[1], carry);
+    [r5, carry] = Fp.mac(r5, kValues[3], Fp.MODULUS[2], carry);
+    [r6, carry] = Fp.mac(r6, kValues[3], Fp.MODULUS[3], carry);
+    [r7, carry] = Fp.mac(r7, kValues[3], Fp.MODULUS[4], carry);
+    [r8, carry] = Fp.mac(r8, kValues[3], Fp.MODULUS[5], carry);
     [r9, r10] = Fp.adc(t9, r9, carry);
 
     // Fifth round
-    k = Provable.witness(Field, () => {
-      const result = r4.mul(Fp.INV);
-      return result.toBigInt() % 0xffff_ffff_ffff_ffffn;
-    });
-    [r4, carry] = Fp.mac(r4, k, Fp.MODULUS[0], Field(0));
-    [r5, carry] = Fp.mac(r5, k, Fp.MODULUS[1], carry);
-    [r6, carry] = Fp.mac(r6, k, Fp.MODULUS[2], carry);
-    [r7, carry] = Fp.mac(r7, k, Fp.MODULUS[3], carry);
-    [r8, carry] = Fp.mac(r8, k, Fp.MODULUS[4], carry);
-    [r9, carry] = Fp.mac(r9, k, Fp.MODULUS[5], carry);
+    [r4, carry] = Fp.mac(r4, kValues[4], Fp.MODULUS[0], Field(0));
+    [r5, carry] = Fp.mac(r5, kValues[4], Fp.MODULUS[1], carry);
+    [r6, carry] = Fp.mac(r6, kValues[4], Fp.MODULUS[2], carry);
+    [r7, carry] = Fp.mac(r7, kValues[4], Fp.MODULUS[3], carry);
+    [r8, carry] = Fp.mac(r8, kValues[4], Fp.MODULUS[4], carry);
+    [r9, carry] = Fp.mac(r9, kValues[4], Fp.MODULUS[5], carry);
     [r10, r11] = Fp.adc(t10, r10, carry);
 
     // Sixth round
-    k = Provable.witness(Field, () => {
-      const result = r5.mul(Fp.INV);
-      return result.toBigInt() % 0xffff_ffff_ffff_ffffn;
-    });
-    [r5, carry] = Fp.mac(r5, k, Fp.MODULUS[0], Field(0));
-    [r6, carry] = Fp.mac(r6, k, Fp.MODULUS[1], carry);
-    [r7, carry] = Fp.mac(r7, k, Fp.MODULUS[2], carry);
-    [r8, carry] = Fp.mac(r8, k, Fp.MODULUS[3], carry);
-    [r9, carry] = Fp.mac(r9, k, Fp.MODULUS[4], carry);
-    [r10, carry] = Fp.mac(r10, k, Fp.MODULUS[5], carry);
+    [r5, carry] = Fp.mac(r5, kValues[5], Fp.MODULUS[0], Field(0));
+    [r6, carry] = Fp.mac(r6, kValues[5], Fp.MODULUS[1], carry);
+    [r7, carry] = Fp.mac(r7, kValues[5], Fp.MODULUS[2], carry);
+    [r8, carry] = Fp.mac(r8, kValues[5], Fp.MODULUS[3], carry);
+    [r9, carry] = Fp.mac(r9, kValues[5], Fp.MODULUS[4], carry);
+    [r10, carry] = Fp.mac(r10, kValues[5], Fp.MODULUS[5], carry);
     [r11, carry] = Fp.adc(t11, r11, carry);
 
     return new Fp({
@@ -529,7 +516,7 @@ export class Fp extends Struct({
   }
 
   equals(other: Fp): Bool {
-    Provable.log("[Fp1] equals", other);
+    // Provable.log("[Fp1] equals", other);
     return this.value[0]
       .equals(other.value[0])
       .and(
@@ -551,9 +538,9 @@ export class Fp extends Struct({
       );
   }
 
-  assertEquals(other: Fp) {
-    Provable.log("[Fp1] assertEquals");
-    this.equals(other).assertTrue();
+  assertEquals(other: Fp, message?: string) {
+    // Provable.log("[Fp1] assertEquals");
+    this.equals(other).assertTrue(message);
   }
 
   /**
@@ -561,8 +548,24 @@ export class Fp extends Struct({
    * Returns a*b in Montgomery form.
    */
   mul(other: Fp): Fp {
-    Provable.log("[Fp1] mul", other);
-    let t = [0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n].map(Field);
+    // Provable.log("[Fp1] mul", other);
+    this.checkRange();
+    other.checkRange();
+
+    const t = [
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+      Field(0),
+    ];
 
     // First round
     let carry = Field(0);
@@ -629,8 +632,14 @@ export class Fp extends Struct({
     );
   }
 
+  private checkRange() {
+    for (let i = 0; i < 6; i++) {
+      Gadgets.rangeCheck64(this.value[i]);
+    }
+  }
+
   sqrt(): Fp {
-    Provable.log("[Fp1] sqrt");
+    // Provable.log("[Fp1] sqrt");
 
     // For BLS12-381, p ≡ 3 (mod 4), so we can use the formula:
     // sqrt(a) = a^((p+1)/4) if a is a square
@@ -651,42 +660,48 @@ export class Fp extends Struct({
     //   Field(0x92c6_e9ed_90d2_eb35n),
     //   Field(0x0680_447a_8e5f_f9a6n),
     // ]);
-    const sqrt = this.pow(Fp.fromBigInt((P + 1n) / 4n));
-    sqrt.square().assertEquals(this);
-    return sqrt;
-  }
+    const exp = Fp.fromBigInt((P + 1n) / 4n);
+    const root = this.pow(exp);
 
-  private powVartime(by: Field[]): Fp {
-    Provable.log("[Fp1] powVartime", by);
+    root.square().equals(this).assertTrue("Value is not a quadratic residue");
 
-    let res = Fp.one();
-
-    for (let i = by.length - 1; i >= 0; i--) {
-      const limb = by[i];
-      Gadgets.rangeCheck64(limb);
-      for (let j = 63; j >= 0; j--) {
-        res = res.square();
-
-        const rightShiftedLimb = Provable.witness(Field, () => {
-          return limb.toBigInt() >> BigInt(j);
-        });
-        if (
-          Gadgets.and(rightShiftedLimb, Field(1), 64)
-            .equals(Field(1))
-            .equals(Bool(true))
-        ) {
-          res = res.mul(this);
-        }
-      }
-    }
-
-    return res;
+    return root;
   }
 
   pow(exp: Fp): Fp {
-    Provable.log("[Fp1] pow", exp);
+    // Provable.log("[Fp1] pow", exp);
 
-    return this.powVartime(exp.value);
+    const result = Provable.witness(Fp, () => {
+      const modulus = this.toBigInt();
+
+      const exponent = exp.toBigInt();
+      let res = 1n;
+      let b = this.toBigInt() % modulus;
+      let e = exponent;
+
+      while (e > 0n) {
+        if (e & 1n) {
+          res = (res * b) % modulus;
+        }
+        b = (b * b) % modulus;
+        e >>= 1n;
+      }
+      return Fp.fromBigInt(res);
+    });
+
+    // TODO: figure out why this is preventing compilation
+    // r^e == b
+    // const exponentBits = exp.value.flatMap((limb) => limb.toBits());
+    // let verifier = Fp.one();
+    // let current: Fp = this;
+
+    // for (let i = 0; i < exponentBits.length; i++) {
+    //   verifier = Provable.if(exponentBits[i], verifier.mul(current), verifier);
+    //   current = current.square();
+    // }
+
+    // verifier.assertEquals(result, "Power result is incorrect");
+    return result;
   }
 }
 

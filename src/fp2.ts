@@ -1,4 +1,4 @@
-import { Provable, Struct, type Bool } from "o1js";
+import { type Bool, Provable, Struct } from "o1js";
 import { Fp } from "./fp";
 
 export class Fp2 extends Struct({
@@ -120,13 +120,12 @@ export class Fp2 extends Struct({
     // For Fp2, Frobenius is just conjugation raised to power
     if (power % 2 === 0) {
       return this;
-    } else {
-      // Conjugate and multiply by coefficient
-      return new Fp2({
-        real: this.real,
-        imaginary: this.imaginary.negate(),
-      }).mul(Fp2.fromBigInt(coefficient[0], coefficient[1]));
     }
+    // Conjugate and multiply by coefficient
+    return new Fp2({
+      real: this.real,
+      imaginary: this.imaginary.negate(),
+    }).mul(Fp2.fromBigInt(coefficient[0], coefficient[1]));
   }
 
   inverse(): Fp2 {

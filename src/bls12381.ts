@@ -1,22 +1,22 @@
 import { Bool, Provable, Struct, ZkProgram } from "o1js";
 import { Fp } from "./fp";
+import { Fp2 } from "./fp2";
+import { Fp6 } from "./fp6";
 import { Fp12 } from "./fp12";
 import { G1Point } from "./g1";
 import { G2Point } from "./g2";
-import { Fp2 } from "./fp2";
-import { Fp6 } from "./fp6";
 
 const BLS_X = -0xd201000000010000n;
 const BLS_X_BITS = BLS_X.toString(2).slice(1); // Remove sign
 
-export class BLS12_381_Signature extends Struct({
+export class BLS12381_Signature extends Struct({
   R: G1Point,
   S: G1Point,
 }) {
   static verify(
     publicKey: G2Point,
     message: G1Point,
-    signature: BLS12_381_Signature
+    signature: BLS12381_Signature
   ): Bool {
     // Point validation checks
     Provable.log("R", signature.R);
@@ -36,19 +36,19 @@ export class BLS12_381_Signature extends Struct({
     const negS = signature.S.negate();
     const sum = message.add(negS);
 
-    const f = this.millerLoop(publicKey, sum);
-    const exp = this.finalExponentiation(f);
+    const f = BLS12381_Signature.millerLoop(publicKey, sum);
+    const exp = BLS12381_Signature.finalExponentiation(f);
     return Fp12.equals(exp, Fp12.one());
   }
 
-  static sign(privateKey: Fp, message: G1Point): BLS12_381_Signature {
+  static sign(privateKey: Fp, message: G1Point): BLS12381_Signature {
     // Calculate R = H(m)
     const R = message;
 
     // Calculate S = privateKey * R
     const S = message.multiply(privateKey);
 
-    return new BLS12_381_Signature({
+    return new BLS12381_Signature({
       R: R,
       S: S,
     });
@@ -60,11 +60,11 @@ export class BLS12_381_Signature extends Struct({
 
     for (let i = 0; i < BLS_X_BITS.length; i++) {
       f = f.square();
-      f = f.mul(this.lineEval(R, R, Q));
+      f = f.mul(BLS12381_Signature.lineEval(R, R, Q));
       R = R.add(R);
 
       if (BLS_X_BITS[i] === "1") {
-        f = f.mul(this.lineEval(R, P, Q));
+        f = f.mul(BLS12381_Signature.lineEval(R, P, Q));
         R = R.add(P);
       }
     }
