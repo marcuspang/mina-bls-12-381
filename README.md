@@ -29,7 +29,7 @@ Approach:
 
 ## Problems
 
-1. `Fp` is not working as expected, main issue is with managing 6 limbs for 384 bits
+1. Most code beyond Fp6 is over constraints, steps to modularize the logic is still in progress. See `src/fp6-program.ts` for an example of the inverse program split up into 3 smaller ones
 2. Need to do more rigorous checks in pairing implementation, currently it is loosely based off of `noble-bls12-381`, which is archived
 3. Most of the code is not optimized
 
@@ -39,6 +39,8 @@ Simply prove $$e(Public Key Aggregated, Hash(message)) == e(G1, Signature Aggreg
 
 ## TODOs
 
+- [ ] compile all primitive programs with benchmark programs to make sure they are not over constraints
+- [ ] compile signature program with benchmark program to make sure it is not over constraints
 - [ ] get all unit tests working with fast-check (mainly for `Fp`)
 - [ ] add examples for batch verification
 - [ ] frontend to try generating client side proofs
