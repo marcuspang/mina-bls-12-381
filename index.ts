@@ -1,8 +1,7 @@
-import { ZkProgram, Bool } from "o1js";
+import { Bool, ZkProgram } from "o1js";
 import { BLS12_381_Signature } from "./bls12_381";
 import { G1Point } from "./g1";
 import { G2Point } from "./g2";
-import { Mina } from "o1js";
 
 export const blsVerify = ZkProgram({
   name: "bls-verify",
@@ -32,7 +31,13 @@ export const blsVerify = ZkProgram({
 
 // Compile the program
 console.log("Compiling BLS verification program...");
-const { verificationKey } = await blsVerify.compile();
+const { verifyBLS } = await blsVerify.analyzeMethods();
+
+console.log(verifyBLS.summary());
+
+console.time("compile");
+await blsVerify.compile({ forceRecompile: false });
+console.timeEnd("compile");
 
 const messagePoint = G1Point.ZERO;
 const signature = new BLS12_381_Signature({
@@ -43,10 +48,14 @@ const publicKey = G2Point.ZERO;
 
 // Create the proof
 console.log("Creating proof...");
+console.time("proof");
 const proof = await blsVerify.verifyBLS(messagePoint, signature, publicKey);
+console.timeEnd("proof");
 
 // Verify the proof
 console.log("Verifying proof...");
+console.time("verify");
 const isValid = await blsVerify.verify(proof.proof);
+console.timeEnd("verify");
 
 console.log("Verification result:", isValid);

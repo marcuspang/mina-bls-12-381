@@ -1,4 +1,4 @@
-import { Bool, Struct, ZkProgram } from "o1js";
+import { Bool, Provable, Struct, ZkProgram } from "o1js";
 import { Fp } from "./fp";
 import { Fp12 } from "./fp12";
 import { G1Point } from "./g1";
@@ -19,9 +19,13 @@ export class BLS12_381_Signature extends Struct({
     signature: BLS12_381_Signature
   ): Bool {
     // Point validation checks
+    Provable.log("R", signature.R);
     G1Point.isOnCurve(signature.R);
+    Provable.log("S", signature.S);
     G1Point.isOnCurve(signature.S);
+    Provable.log("publicKey", publicKey);
     G2Point.isOnCurve(publicKey);
+    Provable.log("message", message);
     G1Point.isOnCurve(message);
 
     // Verify e(P, H(m)) == e(G, S)

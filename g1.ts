@@ -28,6 +28,7 @@ export class G1Point extends Struct({
 
   // Check if point is on curve: y² = x³ + 4
   static isOnCurve(p: G1Point): Bool {
+    Provable.log("[G1Point] isOnCurve", p);
     return Provable.if(
       p.isInfinity,
       Bool(false),
@@ -40,14 +41,17 @@ export class G1Point extends Struct({
   }
 
   toFields(): Field[] {
+    Provable.log("[G1Point] toFields", this);
     return this.x.toFields();
   }
 
   isZero(): Bool {
+    Provable.log("[G1Point] isZero", this);
     return this.isInfinity;
   }
 
   negate(): G1Point {
+    Provable.log("[G1Point] negate", this);
     return Provable.if(
       this.isZero(),
       this,
@@ -59,7 +63,8 @@ export class G1Point extends Struct({
     );
   }
 
-  add(other: G1Point): G1Point {
+    add(other: G1Point): G1Point {
+    Provable.log("[G1Point] add", this, other);
     // Handle special cases
     if (this.isZero().equals(Bool(true))) return other;
     if (other.isZero().equals(Bool(true))) return this;
@@ -126,6 +131,7 @@ export class G1Point extends Struct({
   }
 
   equals(other: G1Point): Bool {
+    Provable.log("[G1Point] equals", this, other);
     return Provable.if(
       this.isZero().and(other.isZero()),
       Bool(true),
@@ -138,6 +144,7 @@ export class G1Point extends Struct({
 
   // Convert to affine coordinates string representation
   toString(): string {
+    Provable.log("[G1Point] toString", this);
     if (this.isZero().equals(Bool(true))) return "G1Point(infinity)";
     return `G1Point(x: ${this.x.toString()}, y: ${this.y.toString()})`;
   }

@@ -16,22 +16,27 @@ export class Fp2 extends Struct({
   ];
 
   static fromBigInt(x: bigint, y: bigint): Fp2 {
+    Provable.log("[Fp2] fromBigInt", x, y);
     return new Fp2({ real: Fp.fromBigInt(x), imaginary: Fp.fromBigInt(y) });
   }
 
   static zero(): Fp2 {
+    Provable.log("[Fp2] zero");
     return new Fp2({ real: Fp.zero(), imaginary: Fp.zero() });
   }
 
   static one(): Fp2 {
+    Provable.log("[Fp2] one");
     return new Fp2({ real: Fp.one(), imaginary: Fp.zero() });
   }
 
   isZero(): Bool {
+    Provable.log("[Fp2] isZero");
     return Provable.equal(Fp2, this, Fp2.zero());
   }
 
   add(other: Fp2): Fp2 {
+    Provable.log("[Fp2] add", other);
     return new Fp2({
       real: this.real.add(other.real),
       imaginary: this.imaginary.add(other.imaginary),
@@ -39,6 +44,7 @@ export class Fp2 extends Struct({
   }
 
   sub(other: Fp2): Fp2 {
+    Provable.log("[Fp2] sub", other);
     return new Fp2({
       real: this.real.sub(other.real),
       imaginary: this.imaginary.sub(other.imaginary),
@@ -46,6 +52,7 @@ export class Fp2 extends Struct({
   }
 
   mul(other: Fp2): Fp2 {
+    Provable.log("[Fp2] mul", other);
     const ac = this.real.mul(other.real);
     const bd = this.imaginary.mul(other.imaginary);
     const ad = this.real.mul(other.imaginary);
@@ -58,6 +65,7 @@ export class Fp2 extends Struct({
   }
 
   div(other: Fp2): Fp2 {
+    Provable.log("[Fp2] div", other);
     other.real.isZero().and(other.imaginary.isZero()).assertFalse();
 
     // (a + bi)(c - di)/((c + di)(c - di))
@@ -78,6 +86,7 @@ export class Fp2 extends Struct({
 
   // (a + bi)² = (a² - b²) + (2ab)i
   square(): Fp2 {
+    Provable.log("[Fp2] square");
     const a2 = this.real.square();
     const b2 = this.imaginary.square();
     const ab = this.real.mul(this.imaginary);
@@ -89,6 +98,7 @@ export class Fp2 extends Struct({
   }
 
   negate(): Fp2 {
+    Provable.log("[Fp2] negate");
     return new Fp2({
       real: this.real.negate(),
       imaginary: this.imaginary.negate(),
@@ -96,6 +106,7 @@ export class Fp2 extends Struct({
   }
 
   conjugate(): Fp2 {
+    Provable.log("[Fp2] conjugate");
     return new Fp2({
       real: this.real,
       imaginary: this.imaginary.negate(),
@@ -103,6 +114,7 @@ export class Fp2 extends Struct({
   }
 
   frobeniusMap(power: number): Fp2 {
+    Provable.log("[Fp2] frobeniusMap", power);
     const coefficient = Fp2.FROBENIUS_COEFFICIENTS[power % 2];
 
     // For Fp2, Frobenius is just conjugation raised to power
@@ -118,6 +130,7 @@ export class Fp2 extends Struct({
   }
 
   inverse(): Fp2 {
+    Provable.log("[Fp2] inverse");
     // 1/(a + bi) = (a - bi)/(a² + b²)
     const norm = this.real.square().add(this.imaginary.square());
     const normInv = norm.inverse();
@@ -129,6 +142,7 @@ export class Fp2 extends Struct({
   }
 
   mulByNonresidue(): Fp2 {
+    Provable.log("[Fp2] mulByNonresidue");
     // For BLS12-381, multiply by (1 + i)
     // (a + bi)(1 + i) = (a - b) + (a + b)i
     return new Fp2({
@@ -138,6 +152,7 @@ export class Fp2 extends Struct({
   }
 
   static equals(a: Fp2, b: Fp2): Bool {
+    Provable.log("[Fp2] equals", a, b);
     return Provable.equal(Fp2, a, b);
   }
 }

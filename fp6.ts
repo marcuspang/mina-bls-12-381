@@ -1,4 +1,4 @@
-import { Struct } from "o1js";
+import { Provable, Struct } from "o1js";
 import { Fp2 } from "./fp2";
 
 const FP6_FROBENIUS_COEFFICIENTS_1 = [
@@ -53,6 +53,7 @@ export class Fp6 extends Struct({
   c2: Fp2,
 }) {
   static zero(): Fp6 {
+    Provable.log("[Fp6] zero");
     return new Fp6({
       c0: Fp2.zero(),
       c1: Fp2.zero(),
@@ -61,6 +62,7 @@ export class Fp6 extends Struct({
   }
 
   static one(): Fp6 {
+    Provable.log("[Fp6] one");
     return new Fp6({
       c0: Fp2.one(),
       c1: Fp2.zero(),
@@ -69,6 +71,7 @@ export class Fp6 extends Struct({
   }
 
   add(other: Fp6): Fp6 {
+    Provable.log("[Fp6] add", this, other);
     return new Fp6({
       c0: this.c0.add(other.c0),
       c1: this.c1.add(other.c1),
@@ -77,6 +80,7 @@ export class Fp6 extends Struct({
   }
 
   sub(other: Fp6): Fp6 {
+    Provable.log("[Fp6] sub", this, other);
     return new Fp6({
       c0: this.c0.sub(other.c0),
       c1: this.c1.sub(other.c1),
@@ -85,6 +89,7 @@ export class Fp6 extends Struct({
   }
 
   mul(other: Fp6): Fp6 {
+    Provable.log("[Fp6] mul", this, other);
     const v0 = this.c0.mul(other.c0);
     const v1 = this.c1.mul(other.c1);
     const v2 = this.c2.mul(other.c2);
@@ -114,6 +119,7 @@ export class Fp6 extends Struct({
   }
 
   square(): Fp6 {
+    Provable.log("[Fp6] square", this);
     const v0 = this.c0.square();
     const v1 = this.c1.mul(this.c2).add(this.c1.mul(this.c2));
     const v2 = this.c2.square();
@@ -125,6 +131,7 @@ export class Fp6 extends Struct({
   }
 
   negate(): Fp6 {
+    Provable.log("[Fp6] negate", this);
     return new Fp6({
       c0: this.c0.negate(),
       c1: this.c1.negate(),
@@ -133,6 +140,7 @@ export class Fp6 extends Struct({
   }
 
   frobeniusMap(power: number): Fp6 {
+    Provable.log("[Fp6] frobeniusMap", this, power);
     return new Fp6({
       c0: this.c0.frobeniusMap(power),
       c1: this.c1
@@ -146,6 +154,7 @@ export class Fp6 extends Struct({
 
   // Multiply by quadratic nonresidue v
   mulByNonresidue(): Fp6 {
+    Provable.log("[Fp6] mulByNonresidue", this);
     // For BLS12-381, the quadratic non-residue is ξ = u + 1
     // where u is the quadratic non-residue in Fp2
     // This is equivalent to multiplying by (u + 1)
@@ -157,6 +166,7 @@ export class Fp6 extends Struct({
   }
 
   inverse(): Fp6 {
+    Provable.log("[Fp6] inverse", this);
     const c0 = this.c0.square().sub(this.c1.mul(this.c2).mulByNonresidue());
     const c1 = this.c2.square().mulByNonresidue().sub(this.c0.mul(this.c1));
     const c2 = this.c1.square().sub(this.c0.mul(this.c2));

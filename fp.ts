@@ -8,7 +8,7 @@ export type FpFields = [Field, Field, Field, Field, Field, Field];
 export class Fp extends Struct({
   // little endian Field
   // least significant limb at index 0
-  value: [Field, Field, Field, Field, Field, Field],
+  value: Provable.Array(Field, 6),
 }) {
   static MODULUS = [
     Field(0xb9fe_ffff_ffff_aaabn),
@@ -42,8 +42,12 @@ export class Fp extends Struct({
   static INV = 0x89f3_fffc_fffc_fffdn; // -p^-1 mod 2^64
 
   static fromBigInt(num: bigint): Fp {
+    Provable.log("[Fp1] fromBigInt", num);
     if (num >= P) {
       throw new Error("Input must be less than field modulus");
+    }
+    if (num < 0n) {
+      throw new Error("Input must be non-negative.");
     }
 
     const mask = 0xffff_ffff_ffff_ffffn;
@@ -64,6 +68,7 @@ export class Fp extends Struct({
   }
 
   static fromFields(values: Field[]): Fp {
+    Provable.log("[Fp1] fromFields", values);
     if (values.length !== 6) {
       throw new Error("Invalid number of fields");
     }
@@ -72,16 +77,20 @@ export class Fp extends Struct({
   }
 
   toFields(): Field[] {
+    Provable.log("[Fp1] toFields");
+
     return this.value;
   }
 
   static zero(): Fp {
+    Provable.log("[Fp1] zero");
     return new Fp({
       value: [Field(0n), Field(0n), Field(0n), Field(0n), Field(0n), Field(0n)],
     });
   }
 
   static one(): Fp {
+    Provable.log("[Fp1] one");
     return Fp.fromFields(Fp.R); // One in Montgomery form
   }
 
@@ -90,6 +99,7 @@ export class Fp extends Struct({
    * The result is in standard (non-Montgomery) form.
    */
   toBigInt(): bigint {
+    Provable.log("[Fp1] toBigInt");
     // Convert from Montgomery form by computing
     // (a.R) / R = a
     const reduced = this.montgomeryReduce(
@@ -118,6 +128,7 @@ export class Fp extends Struct({
 
   /// Compute a + b + carry, returning the result and the new carry over.
   static adc(a: Field, b: Field, carry: Field): [Field, Field] {
+    Provable.log("[Fp1] adc", a, b, carry);
     Gadgets.rangeCheck64(a);
     Gadgets.rangeCheck64(b);
     Gadgets.rangeCheck64(carry);
@@ -138,6 +149,8 @@ export class Fp extends Struct({
 
   /// Compute a - (b + borrow), returning the result and the new borrow.
   static sbb(a: Field, b: Field, borrow: Field): [Field, Field] {
+    Provable.log("[Fp1] sbb", a, b, borrow);
+
     Gadgets.rangeCheck64(a);
     Gadgets.rangeCheck64(b);
     Gadgets.rangeCheck64(borrow);
@@ -161,6 +174,8 @@ export class Fp extends Struct({
 
   /// Compute a + (b * c) + carry, returning the result and the new carry over.
   static mac(a: Field, b: Field, c: Field, carry: Field): [Field, Field] {
+    Provable.log("[Fp1] mac", a, b, c);
+
     Gadgets.rangeCheck64(a);
     Gadgets.rangeCheck64(b);
     Gadgets.rangeCheck64(c);
@@ -181,6 +196,8 @@ export class Fp extends Struct({
   }
 
   add(other: Fp): Fp {
+    Provable.log("[Fp1] add", other);
+
     let [d0, d1, d2, d3, d4, d5] = [
       Field(0n),
       Field(0n),
@@ -201,6 +218,7 @@ export class Fp extends Struct({
   }
 
   subtractP(): Fp {
+    Provable.log("[Fp1] subtractP");
     let [r0, r1, r2, r3, r4, r5] = [
       Field(0),
       Field(0),
@@ -224,14 +242,18 @@ export class Fp extends Struct({
   }
 
   sub(other: Fp): Fp {
+    Provable.log("[Fp1] sub", other);
     return other.negate().add(this);
   }
 
   div(other: Fp): Fp {
+    Provable.log("[Fp1] div", other);
     return this.mul(other.inverse());
   }
 
   mod(other: Fp): Fp {
+    Provable.log("[Fp1] mod", other);
+
     other.isZero().assertFalse();
 
     const inverse = other.inverse();
@@ -241,6 +263,7 @@ export class Fp extends Struct({
   }
 
   square(): Fp {
+    Provable.log("[Fp1] square");
     let t = [0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n].map(Field);
 
     // First handle diagonal terms
@@ -297,6 +320,8 @@ export class Fp extends Struct({
    * Returns null if this element is zero.
    */
   inverse(): Fp {
+    Provable.log("[Fp1] inverse");
+
     // Using Fermat's little theorem, we raise to p-2:
     // a^(p-2) ≡ a^(-1) mod p, if a ≠ 0
 
@@ -327,10 +352,14 @@ export class Fp extends Struct({
    * Returns true if this element is zero.
    */
   isZero(): Bool {
+    Provable.log("[Fp1] isZero");
+
     return this.equals(Fp.zero());
   }
 
   negate(): Fp {
+    Provable.log("[Fp1] negate");
+
     let [r0, r1, r2, r3, r4, r5] = [
       Field(0),
       Field(0),
@@ -385,6 +414,22 @@ export class Fp extends Struct({
     t10: Field,
     t11: Field
   ): Fp {
+    Provable.log(
+      "[Fp1] montgomeryReduce",
+      t0,
+      t1,
+      t2,
+      t3,
+      t4,
+      t5,
+      t6,
+      t7,
+      t8,
+      t9,
+      t10,
+      t11
+    );
+
     // First round of reduction
     let [r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11] = [
       Field(0),
@@ -484,6 +529,7 @@ export class Fp extends Struct({
   }
 
   equals(other: Fp): Bool {
+    Provable.log("[Fp1] equals", other);
     return this.value[0]
       .equals(other.value[0])
       .and(
@@ -506,6 +552,7 @@ export class Fp extends Struct({
   }
 
   assertEquals(other: Fp) {
+    Provable.log("[Fp1] assertEquals");
     this.equals(other).assertTrue();
   }
 
@@ -513,57 +560,58 @@ export class Fp extends Struct({
    * Multiplies two field elements in Montgomery form.
    * Returns a*b in Montgomery form.
    */
-  mul(rhs: Fp): Fp {
+  mul(other: Fp): Fp {
+    Provable.log("[Fp1] mul", other);
     let t = [0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n, 0n].map(Field);
 
     // First round
     let carry = Field(0);
-    [t[0], carry] = Fp.mac(t[0], this.value[0], rhs.value[0], Field(0));
-    [t[1], carry] = Fp.mac(Field(0), this.value[0], rhs.value[1], carry);
-    [t[2], carry] = Fp.mac(Field(0), this.value[0], rhs.value[2], carry);
-    [t[3], carry] = Fp.mac(Field(0), this.value[0], rhs.value[3], carry);
-    [t[4], carry] = Fp.mac(Field(0), this.value[0], rhs.value[4], carry);
-    [t[5], t[6]] = Fp.mac(Field(0), this.value[0], rhs.value[5], carry);
+    [t[0], carry] = Fp.mac(t[0], this.value[0], other.value[0], Field(0));
+    [t[1], carry] = Fp.mac(Field(0), this.value[0], other.value[1], carry);
+    [t[2], carry] = Fp.mac(Field(0), this.value[0], other.value[2], carry);
+    [t[3], carry] = Fp.mac(Field(0), this.value[0], other.value[3], carry);
+    [t[4], carry] = Fp.mac(Field(0), this.value[0], other.value[4], carry);
+    [t[5], t[6]] = Fp.mac(Field(0), this.value[0], other.value[5], carry);
 
     // Second round
-    [t[1], carry] = Fp.mac(t[1], this.value[1], rhs.value[0], Field(0));
-    [t[2], carry] = Fp.mac(t[2], this.value[1], rhs.value[1], carry);
-    [t[3], carry] = Fp.mac(t[3], this.value[1], rhs.value[2], carry);
-    [t[4], carry] = Fp.mac(t[4], this.value[1], rhs.value[3], carry);
-    [t[5], carry] = Fp.mac(t[5], this.value[1], rhs.value[4], carry);
-    [t[6], t[7]] = Fp.mac(t[6], this.value[1], rhs.value[5], carry);
+    [t[1], carry] = Fp.mac(t[1], this.value[1], other.value[0], Field(0));
+    [t[2], carry] = Fp.mac(t[2], this.value[1], other.value[1], carry);
+    [t[3], carry] = Fp.mac(t[3], this.value[1], other.value[2], carry);
+    [t[4], carry] = Fp.mac(t[4], this.value[1], other.value[3], carry);
+    [t[5], carry] = Fp.mac(t[5], this.value[1], other.value[4], carry);
+    [t[6], t[7]] = Fp.mac(t[6], this.value[1], other.value[5], carry);
 
     // Third round
-    [t[2], carry] = Fp.mac(t[2], this.value[2], rhs.value[0], Field(0));
-    [t[3], carry] = Fp.mac(t[3], this.value[2], rhs.value[1], carry);
-    [t[4], carry] = Fp.mac(t[4], this.value[2], rhs.value[2], carry);
-    [t[5], carry] = Fp.mac(t[5], this.value[2], rhs.value[3], carry);
-    [t[6], carry] = Fp.mac(t[6], this.value[2], rhs.value[4], carry);
-    [t[7], t[8]] = Fp.mac(t[7], this.value[2], rhs.value[5], carry);
+    [t[2], carry] = Fp.mac(t[2], this.value[2], other.value[0], Field(0));
+    [t[3], carry] = Fp.mac(t[3], this.value[2], other.value[1], carry);
+    [t[4], carry] = Fp.mac(t[4], this.value[2], other.value[2], carry);
+    [t[5], carry] = Fp.mac(t[5], this.value[2], other.value[3], carry);
+    [t[6], carry] = Fp.mac(t[6], this.value[2], other.value[4], carry);
+    [t[7], t[8]] = Fp.mac(t[7], this.value[2], other.value[5], carry);
 
     // Fourth round
-    [t[3], carry] = Fp.mac(t[3], this.value[3], rhs.value[0], Field(0));
-    [t[4], carry] = Fp.mac(t[4], this.value[3], rhs.value[1], carry);
-    [t[5], carry] = Fp.mac(t[5], this.value[3], rhs.value[2], carry);
-    [t[6], carry] = Fp.mac(t[6], this.value[3], rhs.value[3], carry);
-    [t[7], carry] = Fp.mac(t[7], this.value[3], rhs.value[4], carry);
-    [t[8], t[9]] = Fp.mac(t[8], this.value[3], rhs.value[5], carry);
+    [t[3], carry] = Fp.mac(t[3], this.value[3], other.value[0], Field(0));
+    [t[4], carry] = Fp.mac(t[4], this.value[3], other.value[1], carry);
+    [t[5], carry] = Fp.mac(t[5], this.value[3], other.value[2], carry);
+    [t[6], carry] = Fp.mac(t[6], this.value[3], other.value[3], carry);
+    [t[7], carry] = Fp.mac(t[7], this.value[3], other.value[4], carry);
+    [t[8], t[9]] = Fp.mac(t[8], this.value[3], other.value[5], carry);
 
     // Fifth round
-    [t[4], carry] = Fp.mac(t[4], this.value[4], rhs.value[0], Field(0));
-    [t[5], carry] = Fp.mac(t[5], this.value[4], rhs.value[1], carry);
-    [t[6], carry] = Fp.mac(t[6], this.value[4], rhs.value[2], carry);
-    [t[7], carry] = Fp.mac(t[7], this.value[4], rhs.value[3], carry);
-    [t[8], carry] = Fp.mac(t[8], this.value[4], rhs.value[4], carry);
-    [t[9], t[10]] = Fp.mac(t[9], this.value[4], rhs.value[5], carry);
+    [t[4], carry] = Fp.mac(t[4], this.value[4], other.value[0], Field(0));
+    [t[5], carry] = Fp.mac(t[5], this.value[4], other.value[1], carry);
+    [t[6], carry] = Fp.mac(t[6], this.value[4], other.value[2], carry);
+    [t[7], carry] = Fp.mac(t[7], this.value[4], other.value[3], carry);
+    [t[8], carry] = Fp.mac(t[8], this.value[4], other.value[4], carry);
+    [t[9], t[10]] = Fp.mac(t[9], this.value[4], other.value[5], carry);
 
     // Sixth round
-    [t[5], carry] = Fp.mac(t[5], this.value[5], rhs.value[0], Field(0));
-    [t[6], carry] = Fp.mac(t[6], this.value[5], rhs.value[1], carry);
-    [t[7], carry] = Fp.mac(t[7], this.value[5], rhs.value[2], carry);
-    [t[8], carry] = Fp.mac(t[8], this.value[5], rhs.value[3], carry);
-    [t[9], carry] = Fp.mac(t[9], this.value[5], rhs.value[4], carry);
-    [t[10], t[11]] = Fp.mac(t[10], this.value[5], rhs.value[5], carry);
+    [t[5], carry] = Fp.mac(t[5], this.value[5], other.value[0], Field(0));
+    [t[6], carry] = Fp.mac(t[6], this.value[5], other.value[1], carry);
+    [t[7], carry] = Fp.mac(t[7], this.value[5], other.value[2], carry);
+    [t[8], carry] = Fp.mac(t[8], this.value[5], other.value[3], carry);
+    [t[9], carry] = Fp.mac(t[9], this.value[5], other.value[4], carry);
+    [t[10], t[11]] = Fp.mac(t[10], this.value[5], other.value[5], carry);
 
     return this.montgomeryReduce(
       t[0],
@@ -582,6 +630,8 @@ export class Fp extends Struct({
   }
 
   sqrt(): Fp {
+    Provable.log("[Fp1] sqrt");
+
     // For BLS12-381, p ≡ 3 (mod 4), so we can use the formula:
     // sqrt(a) = a^((p+1)/4) if a is a square
 
@@ -607,6 +657,8 @@ export class Fp extends Struct({
   }
 
   private powVartime(by: Field[]): Fp {
+    Provable.log("[Fp1] powVartime", by);
+
     let res = Fp.one();
 
     for (let i = by.length - 1; i >= 0; i--) {
@@ -632,6 +684,8 @@ export class Fp extends Struct({
   }
 
   pow(exp: Fp): Fp {
+    Provable.log("[Fp1] pow", exp);
+
     return this.powVartime(exp.value);
   }
 }

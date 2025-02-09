@@ -44,6 +44,7 @@ export class G2Point extends Struct({
 
   // Check if point is on curve: y² = x³ + 4(1+i)
   static isOnCurve(p: G2Point): Bool {
+    Provable.log("[G2Point] isOnCurve", p);
     return Provable.if(
       p.isInfinity,
       Bool(false),
@@ -52,15 +53,18 @@ export class G2Point extends Struct({
   }
 
   toFields(): Field[] {
+    Provable.log("[G2Point] toFields", this);
     // TODO: to avoid type error
     return this.x.real.toFields();
   }
 
   isZero(): Bool {
+    Provable.log("[G2Point] isZero", this);
     return this.isInfinity;
   }
 
   negate(): G2Point {
+    Provable.log("[G2Point] negate", this);
     return Provable.if(
       this.isZero(),
       this,
@@ -73,6 +77,7 @@ export class G2Point extends Struct({
   }
 
   add(other: G2Point): G2Point {
+    Provable.log("[G2Point] add", this, other);
     // Handle special cases
     if (this.isZero().equals(Bool(true))) return other;
     if (other.isZero().equals(Bool(true))) return this;
@@ -119,11 +124,13 @@ export class G2Point extends Struct({
   }
 
   equals(other: G2Point): Bool {
+    Provable.log("[G2Point] equals", this, other);
     if (this.isZero() && other.isZero()) return Bool(true);
     return Fp2.equals(this.x, other.x).and(Fp2.equals(this.y, other.y));
   }
 
   multiply(scalar: Fp): G2Point {
+    Provable.log("[G2Point] multiply", scalar);
     let result = G2Point.ZERO;
     let current: G2Point = this;
     let bits = scalar;

@@ -59,6 +59,7 @@ export class Fp12 extends Struct({
   imaginary: Fp6,
 }) {
   static zero(): Fp12 {
+    Provable.log("[Fp12] zero");
     return new Fp12({
       real: Fp6.zero(),
       imaginary: Fp6.zero(),
@@ -66,6 +67,7 @@ export class Fp12 extends Struct({
   }
 
   static one(): Fp12 {
+    Provable.log("[Fp12] one");
     return new Fp12({
       real: Fp6.one(),
       imaginary: Fp6.zero(),
@@ -73,10 +75,12 @@ export class Fp12 extends Struct({
   }
 
   static equals(a: Fp12, b: Fp12): Bool {
+    Provable.log("[Fp12] equals", a, b);
     return Provable.equal(Fp12, a, b);
   }
 
   add(other: Fp12): Fp12 {
+    Provable.log("[Fp12] add", this, other);
     return new Fp12({
       real: this.real.add(other.real),
       imaginary: this.imaginary.add(other.imaginary),
@@ -84,6 +88,7 @@ export class Fp12 extends Struct({
   }
 
   mul(other: Fp12): Fp12 {
+    Provable.log("[Fp12] mul", this, other);
     const aa = this.real.mul(other.real);
     const bb = this.imaginary.mul(other.imaginary);
     const real = aa.sub(bb);
@@ -96,6 +101,7 @@ export class Fp12 extends Struct({
   }
 
   square(): Fp12 {
+    Provable.log("[Fp12] square", this);
     const ab = this.real.mul(this.imaginary);
     return new Fp12({
       real: this.real.add(this.imaginary).mul(this.real).sub(ab),
@@ -104,6 +110,7 @@ export class Fp12 extends Struct({
   }
 
   conjugate(): Fp12 {
+    Provable.log("[Fp12] conjugate", this);
     return new Fp12({
       real: this.real,
       imaginary: this.imaginary.negate(),
@@ -111,6 +118,7 @@ export class Fp12 extends Struct({
   }
 
   frobeniusMap(power: number): Fp12 {
+    Provable.log("[Fp12] frobeniusMap", this, power);
     const r0 = this.real.frobeniusMap(power);
     const { c0, c1, c2 } = this.imaginary.frobeniusMap(power);
 
@@ -126,8 +134,8 @@ export class Fp12 extends Struct({
     });
   }
 
-  // Final exponentiation for pairing
   finalExponentiation(): Fp12 {
+    Provable.log("[Fp12] finalExponentiation", this);
     // (p^12 - 1)/r = (p^12 - 1)/Φ_12(p) ⋅ Φ_12(p)/r
     const t0 = this.conjugate();
     const t1 = this.inverse();
@@ -140,6 +148,7 @@ export class Fp12 extends Struct({
 
   // Multiplicative inverse
   inverse(): Fp12 {
+    Provable.log("[Fp12] inverse", this);
     const t0 = this.real.square();
     const t1 = this.imaginary.square();
     const t2 = t0.sub(t1);
