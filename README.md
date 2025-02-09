@@ -9,6 +9,26 @@ Approach:
 3. Implement Final Exponentiation
 4. Prove $$e(G2, G1^m) == e(Public Key, Hash(message))$$ in program
 
+## Getting Started
+
+Use bun to install dependencies
+
+```bash
+bun install
+```
+
+Compile and run the benchmark program
+
+```bash
+bun run benchmark-fp6.ts
+```
+
+Compile and run the main signature program
+
+```bash
+bun start
+```
+
 ## Inspirations
 
 - <https://github.com/kroma-network/bls12-381>
