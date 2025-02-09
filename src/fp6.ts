@@ -1,7 +1,7 @@
-import { type Bool, Provable, Struct } from "o1js";
+import { type Bool, Field, Gadgets, Provable, Struct } from "o1js";
 import { Fp2 } from "./fp2";
 
-const FP6_FROBENIUS_COEFFICIENTS_1 = [
+export const FP6_FROBENIUS_COEFFICIENTS_1 = [
   Fp2.fromBigInt(0x1n, 0x0n),
   Fp2.fromBigInt(
     0x0n,
@@ -22,7 +22,7 @@ const FP6_FROBENIUS_COEFFICIENTS_1 = [
   ),
 ];
 
-const FP6_FROBENIUS_COEFFICIENTS_2 = [
+export const FP6_FROBENIUS_COEFFICIENTS_2 = [
   Fp2.fromBigInt(0x1n, 0x0n),
   Fp2.fromBigInt(
     0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaadn,
@@ -140,16 +140,35 @@ export class Fp6 extends Struct({
     });
   }
 
-  frobeniusMap(power: number): Fp6 {
+  frobeniusMap(power: Field): Fp6 {
     Provable.log("[Fp6] frobeniusMap", this, power);
+    const remainderIsOne = Gadgets.and(power, Field(1), 64).equals(Field(1));
+    const remainderIsTwo = Gadgets.and(power, Field(2), 64).equals(Field(2));
+    const remainderIsThree = Gadgets.and(power, Field(3), 64).equals(Field(3));
+    const remainderIsFour = Gadgets.and(power, Field(4), 64).equals(Field(4));
+    const remainderIsFive = Gadgets.and(power, Field(5), 64).equals(Field(5));
+
+    const coefficient = Provable.switch(
+      [
+        remainderIsOne,
+        remainderIsTwo,
+        remainderIsThree,
+        remainderIsFour,
+        remainderIsFive,
+      ],
+      Provable.Array(Fp2, 2),
+      [
+        [FP6_FROBENIUS_COEFFICIENTS_1[0], FP6_FROBENIUS_COEFFICIENTS_2[0]],
+        [FP6_FROBENIUS_COEFFICIENTS_1[1], FP6_FROBENIUS_COEFFICIENTS_2[1]],
+        [FP6_FROBENIUS_COEFFICIENTS_1[2], FP6_FROBENIUS_COEFFICIENTS_2[2]],
+        [FP6_FROBENIUS_COEFFICIENTS_1[3], FP6_FROBENIUS_COEFFICIENTS_2[3]],
+        [FP6_FROBENIUS_COEFFICIENTS_1[4], FP6_FROBENIUS_COEFFICIENTS_2[4]],
+      ]
+    );
     return new Fp6({
       c0: this.c0.frobeniusMap(power),
-      c1: this.c1
-        .frobeniusMap(power)
-        .mul(FP6_FROBENIUS_COEFFICIENTS_1[power % 6]),
-      c2: this.c2
-        .frobeniusMap(power)
-        .mul(FP6_FROBENIUS_COEFFICIENTS_2[power % 6]),
+      c1: this.c1.frobeniusMap(power).mul(coefficient[0]),
+      c2: this.c2.frobeniusMap(power).mul(coefficient[1]),
     });
   }
 
@@ -169,7 +188,6 @@ export class Fp6 extends Struct({
   inverse(): Fp6 {
     Provable.log("[Fp6] inverse", this);
     const { c0, c1, c2 } = this;
-
     // t0 = c0² - (c2 * c1 * ξ)
     const t0 = c0.square().sub(c2.mul(c1).mulByNonresidue());
     // t1 = (c2² * ξ) - (c0 * c1)
@@ -177,7 +195,9 @@ export class Fp6 extends Struct({
     // t2 = c1² - (c0 * c2)
     const t2 = c1.square().sub(c0.mul(c2));
 
-    const determinant = c0.mul(t0).add(c2.mul(t1)).add(c1.mul(t2));
+    // Calculate determinant: c2 * t1 + c1 * t2 first, then multiply by ξ and add c0 * t0
+    const temp = c2.mul(t1).add(c1.mul(t2));
+    const determinant = temp.mulByNonresidue().add(c0.mul(t0));
     const invDet = determinant.inverse();
     return new Fp6({
       c0: t0.mul(invDet),

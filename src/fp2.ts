@@ -1,4 +1,4 @@
-import { type Bool, Provable, Struct } from "o1js";
+import { type Bool, Field, Gadgets, Provable, Struct } from "o1js";
 import { Fp } from "./fp";
 
 export class Fp2 extends Struct({
@@ -56,9 +56,10 @@ export class Fp2 extends Struct({
     // karatsuba
     const t1 = this.c0.mul(other.c0); // c0 * o0
     const t2 = this.c1.mul(other.c1); // c1 * o1
+    const t3 = this.c0.add(this.c1).mul(other.c0.add(other.c1)); // (c0 + c1)(o0 + o1)
     return new Fp2({
       c0: t1.sub(t2), // t1 - t2
-      c1: this.c0.add(this.c1).mul(other.c0.add(other.c1)).sub(t1.add(t2)), // (c0 + c1)(o0 + o1) - (t1 + t2)
+      c1: t3.sub(t1.add(t2)), // (c0 + c1)(o0 + o1) - (t1 + t2)
     });
   }
 
@@ -112,19 +113,21 @@ export class Fp2 extends Struct({
     });
   }
 
-  // TODO: change param type
-  frobeniusMap(power: number): Fp2 {
-    Provable.log("[Fp2] frobeniusMap", power);
-    const coefficient = Fp2.FROBENIUS_COEFFICIENTS[power % 2];
+  toFields(): Field[] {
+    return [...this.c0.toFields(), ...this.c1.toFields()];
+  }
 
-    // For Fp2, Frobenius is just conjugation raised to power
-    if (power % 2 === 0) {
-      return this;
-    }
-    return new Fp2({
-      c0: this.c0,
-      c1: this.c1.mul(Fp.fromBigInt(coefficient[1])),
-    });
+  frobeniusMap(power: Field): Fp2 {
+    Provable.log("[Fp2] frobeniusMap", power);
+    const index = Gadgets.and(power, Field(1), 64);
+    return Provable.if(
+      index.equals(Field(0)),
+      this,
+      new Fp2({
+        c0: this.c0,
+        c1: this.c1.mul(Fp.fromBigInt(Fp2.FROBENIUS_COEFFICIENTS[1][1])),
+      })
+    );
   }
 
   inverse(): Fp2 {

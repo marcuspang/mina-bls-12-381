@@ -46,6 +46,12 @@ export const fp2Program = ZkProgram({
         a.inverse();
       },
     },
+    mulByNonresidue: {
+      privateInputs: [Fp2],
+      async method(a: Fp2) {
+        a.mulByNonresidue();
+      },
+    },
   },
 });
 
