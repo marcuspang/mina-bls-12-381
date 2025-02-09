@@ -93,8 +93,8 @@ export class BLS12381_Signature extends Struct({
     const c = R.y.sub(slope.mul(R.x));
 
     return new Fp12({
-      real: Fp6.zero(),
-      imaginary: new Fp6({
+      c0: Fp6.zero(),
+      c1: new Fp6({
         c0: a,
         c1: b,
         c2: c,

@@ -55,22 +55,22 @@ const FP12_FROBENIUS_COEFFICIENTS = [
 // Fp6 = Fp2[v]/(v^3 - (u + 1))
 // Fp12 = Fp6[w]/(w^2 - v)
 export class Fp12 extends Struct({
-  real: Fp6,
-  imaginary: Fp6,
+  c0: Fp6,
+  c1: Fp6,
 }) {
   static zero(): Fp12 {
     Provable.log("[Fp12] zero");
     return new Fp12({
-      real: Fp6.zero(),
-      imaginary: Fp6.zero(),
+      c0: Fp6.zero(),
+      c1: Fp6.zero(),
     });
   }
 
   static one(): Fp12 {
     Provable.log("[Fp12] one");
     return new Fp12({
-      real: Fp6.one(),
-      imaginary: Fp6.zero(),
+      c0: Fp6.one(),
+      c1: Fp6.zero(),
     });
   }
 
@@ -82,52 +82,52 @@ export class Fp12 extends Struct({
   add(other: Fp12): Fp12 {
     Provable.log("[Fp12] add", this, other);
     return new Fp12({
-      real: this.real.add(other.real),
-      imaginary: this.imaginary.add(other.imaginary),
+      c0: this.c0.add(other.c0),
+      c1: this.c1.add(other.c1),
     });
   }
 
   mul(other: Fp12): Fp12 {
     Provable.log("[Fp12] mul", this, other);
-    const aa = this.real.mul(other.real);
-    const bb = this.imaginary.mul(other.imaginary);
-    const o = other.real.add(other.imaginary);
-    const c1 = this.imaginary.add(this.real).mul(o).sub(aa).sub(bb);
+    const aa = this.c0.mul(other.c0);
+    const bb = this.c1.mul(other.c1);
+    const o = other.c0.add(other.c1);
+    const c1 = this.c1.add(this.c0).mul(o).sub(aa).sub(bb);
     const c0 = bb.mulByNonresidue().add(aa);
 
     return new Fp12({
-      real: c0,
-      imaginary: c1,
+      c0: c0,
+      c1: c1,
     });
   }
 
   square(): Fp12 {
     Provable.log("[Fp12] square", this);
-    const ab = this.real.mul(this.imaginary);
+    const ab = this.c0.mul(this.c1);
     return new Fp12({
-      real: this.real.add(this.imaginary).mul(this.real).sub(ab),
-      imaginary: ab.add(ab),
+      c0: this.c0.add(this.c1).mul(this.c0).sub(ab),
+      c1: ab.add(ab),
     });
   }
 
   conjugate(): Fp12 {
     Provable.log("[Fp12] conjugate", this);
     return new Fp12({
-      real: this.real,
-      imaginary: this.imaginary.negate(),
+      c0: this.c0,
+      c1: this.c1.negate(),
     });
   }
 
   frobeniusMap(power: number): Fp12 {
     Provable.log("[Fp12] frobeniusMap", this, power);
-    const r0 = this.real.frobeniusMap(power);
-    const { c0, c1, c2 } = this.imaginary.frobeniusMap(power);
+    const r0 = this.c0.frobeniusMap(power);
+    const { c0, c1, c2 } = this.c1.frobeniusMap(power);
 
     // Apply Frobenius coefficients
     const coeff = FP12_FROBENIUS_COEFFICIENTS[power % 12];
     return new Fp12({
-      real: r0,
-      imaginary: new Fp6({
+      c0: r0,
+      c1: new Fp6({
         c0: c0.mul(coeff),
         c1: c1.mul(coeff),
         c2: c2.mul(coeff),
@@ -150,13 +150,13 @@ export class Fp12 extends Struct({
   // Multiplicative inverse
   inverse(): Fp12 {
     Provable.log("[Fp12] inverse", this);
-    const t0 = this.real.square();
-    const t1 = this.imaginary.square();
+    const t0 = this.c0.square();
+    const t1 = this.c1.square();
     const t2 = t0.sub(t1);
     const t3 = t2.inverse();
     return new Fp12({
-      real: this.real.mul(t3),
-      imaginary: this.imaginary.mul(t3).negate(),
+      c0: this.c0.mul(t3),
+      c1: this.c1.mul(t3).negate(),
     });
   }
 }

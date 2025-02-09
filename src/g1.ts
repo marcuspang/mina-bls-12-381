@@ -1,4 +1,4 @@
-import { Bool, Provable, Struct, type Field } from "o1js";
+import { Bool, type Field, Provable, Struct } from "o1js";
 import { Fp } from "./fp";
 
 // Point representation for G1 (coordinates in Fp)
