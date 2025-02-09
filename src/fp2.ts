@@ -53,47 +53,46 @@ export class Fp2 extends Struct({
 
   mul(other: Fp2): Fp2 {
     Provable.log("[Fp2] mul", other);
-    const ac = this.c0.mul(other.c0);
-    const bd = this.c1.mul(other.c1);
-    const ad = this.c0.mul(other.c1);
-    const bc = this.c1.mul(other.c0);
-
+    // karatsuba
+    const t1 = this.c0.mul(other.c0); // c0 * o0
+    const t2 = this.c1.mul(other.c1); // c1 * o1
     return new Fp2({
-      c0: ac.sub(bd),
-      c1: ad.add(bc),
+      c0: t1.sub(t2), // t1 - t2
+      c1: this.c0.add(this.c1).mul(other.c0.add(other.c1)).sub(t1.add(t2)), // (c0 + c1)(o0 + o1) - (t1 + t2)
     });
   }
 
   div(other: Fp2): Fp2 {
     Provable.log("[Fp2] div", other);
-    other.c0.isZero().and(other.c1.isZero()).assertFalse();
+    return this.mul(other.inverse());
+    // other.c0.isZero().and(other.c1.isZero()).assertFalse();
 
-    // (a + bi)(c - di)/((c + di)(c - di))
-    // = (ac + bd + (bc - ad)i)/(c² + d²)
-    const norm = other.c0.square().add(other.c1.square());
-    const normInv = norm.inverse();
+    // // (a + bi)(c - di)/((c + di)(c - di))
+    // // = (ac + bd + (bc - ad)i)/(c² + d²)
+    // const norm = other.c0.square().add(other.c1.square());
+    // const normInv = norm.inverse();
 
-    const ac = this.c0.mul(other.c0);
-    const bd = this.c1.mul(other.c1);
-    const bc = this.c1.mul(other.c0);
-    const ad = this.c0.mul(other.c1);
+    // const ac = this.c0.mul(other.c0);
+    // const bd = this.c1.mul(other.c1);
+    // const bc = this.c1.mul(other.c0);
+    // const ad = this.c0.mul(other.c1);
 
-    return new Fp2({
-      c0: ac.add(bd).mul(normInv),
-      c1: bc.sub(ad).mul(normInv),
-    });
+    // return new Fp2({
+    //   c0: ac.add(bd).mul(normInv),
+    //   c1: bc.sub(ad).mul(normInv),
+    // });
   }
 
   // (a + bi)² = (a² - b²) + (2ab)i
   square(): Fp2 {
     Provable.log("[Fp2] square");
-    const a2 = this.c0.square();
-    const b2 = this.c1.square();
-    const ab = this.c0.mul(this.c1);
+    const a = this.c0;
+    const b = this.c1;
+    const ab = a.mul(b);
 
     return new Fp2({
-      c0: a2.sub(b2),
-      c1: ab.add(ab),
+      c0: a.add(b).mul(a.sub(b)), // (a+b)(a-b)
+      c1: ab.add(ab), // 2ab
     });
   }
 
@@ -113,6 +112,7 @@ export class Fp2 extends Struct({
     });
   }
 
+  // TODO: change param type
   frobeniusMap(power: number): Fp2 {
     Provable.log("[Fp2] frobeniusMap", power);
     const coefficient = Fp2.FROBENIUS_COEFFICIENTS[power % 2];
@@ -121,22 +121,19 @@ export class Fp2 extends Struct({
     if (power % 2 === 0) {
       return this;
     }
-    // Conjugate and multiply by coefficient
     return new Fp2({
       c0: this.c0,
-      c1: this.c1.negate(),
-    }).mul(Fp2.fromBigInt(coefficient[0], coefficient[1]));
+      c1: this.c1.mul(Fp.fromBigInt(coefficient[1])),
+    });
   }
 
   inverse(): Fp2 {
     Provable.log("[Fp2] inverse");
-    // 1/(a + bi) = (a - bi)/(a² + b²)
-    const norm = this.c0.square().add(this.c1.square());
-    const normInv = norm.inverse();
-
+    // (a + bi)^(-1) = (a - bi)/(a² + b²)
+    const factor = this.c0.square().add(this.c1.square()).inverse();
     return new Fp2({
-      c0: this.c0.mul(normInv),
-      c1: this.c1.negate().mul(normInv),
+      c0: this.c0.mul(factor),
+      c1: this.c1.negate().mul(factor),
     });
   }
 
