@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import * as fc from "fast-check";
 import { Field, Provable } from "o1js";
-import { Fp, P } from "./fp";
+import { Fp, P } from "../src/fp";
 
 const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten test time
 fc.configureGlobal({ numRuns: NUM_RUNS, endOnFailure: true });

@@ -63,7 +63,7 @@ export class G1Point extends Struct({
     );
   }
 
-    add(other: G1Point): G1Point {
+  add(other: G1Point): G1Point {
     Provable.log("[G1Point] add", this, other);
     // Handle special cases
     if (this.isZero().equals(Bool(true))) return other;

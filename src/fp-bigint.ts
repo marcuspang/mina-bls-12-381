@@ -1,5 +1,5 @@
 import { Bool, Struct } from "o1js";
-import { BigIntParams, createBigIntClass } from "./lib/bigint";
+import { BigIntParams, createBigIntClass } from "../lib/bigint";
 
 export const ProvableBigInt = createBigIntClass(BigIntParams["384_6"]);
 

@@ -30,11 +30,12 @@ export const blsVerify = ZkProgram({
 });
 
 // Compile the program
-console.log("Compiling BLS verification program...");
+console.log("Analyzing BLS verification program...");
 const { verifyBLS } = await blsVerify.analyzeMethods();
 
 console.log(verifyBLS.summary());
 
+console.log("Compiling BLS verification program...");
 console.time("compile");
 await blsVerify.compile({ forceRecompile: false });
 console.timeEnd("compile");
