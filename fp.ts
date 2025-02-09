@@ -7,6 +7,7 @@ export type FpFields = [Field, Field, Field, Field, Field, Field];
 
 export class Fp extends Struct({
   // little endian Field
+  // least significant limb at index 0
   value: [Field, Field, Field, Field, Field, Field],
 }) {
   static MODULUS = [
@@ -19,24 +20,24 @@ export class Fp extends Struct({
   ];
 
   // R = 2^384 mod p
-  static R = Fp.fromFields([
+  static R = [
     Field(0x7609_0000_0002_fffdn),
     Field(0xebf4_000b_c40c_0002n),
     Field(0x5f48_9857_53c7_58ban),
     Field(0x77ce_5853_7052_5745n),
     Field(0x5c07_1a97_a256_ec6dn),
     Field(0x15f6_5ec3_fa80_e493n),
-  ]);
+  ];
 
   // R2 = 2^(384*2) mod p
-  static R2 = Fp.fromFields([
+  static R2 = [
     Field(0xf4df_1f34_1c34_1746n),
     Field(0x0a76_e6a6_09d1_04f1n),
     Field(0x8de5_476c_4c95_b6d5n),
     Field(0x67eb_88a9_939d_83c0n),
     Field(0x9a79_3e85_b519_952dn),
     Field(0x1198_8fe5_92ca_e3aan),
-  ]);
+  ];
 
   static INV = 0x89f3_fffc_fffc_fffdn; // -p^-1 mod 2^64
 
@@ -45,30 +46,29 @@ export class Fp extends Struct({
       throw new Error("Input must be less than field modulus");
     }
 
-    const mask = (1n << 64n) - 1n;
-    const limbs: Field[] = [];
-    let temp = num;
-
-    // Extract 6 limbs (for 384 bits total)
-    for (let i = 0; i < 6; i++) {
-      limbs.push(Field(temp & mask));
-      temp = temp >> 64n;
-    }
-
-    const result = new Fp({
-      value: [limbs[0], limbs[1], limbs[2], limbs[3], limbs[4], limbs[5]],
+    const mask = 0xffff_ffff_ffff_ffffn;
+    // (a.R^0 * R^2) / R = a.R
+    const tmp = new Fp({
+      value: [
+        Field(num & mask),
+        Field((num >> 64n) & mask),
+        Field((num >> 128n) & mask),
+        Field((num >> 192n) & mask),
+        Field((num >> 256n) & mask),
+        Field((num >> 320n) & mask),
+      ],
     });
 
     // Convert to Montgomery form by multiplying by R2
-    return result.mul(Fp.R2);
+    return tmp.mul(Fp.fromFields(Fp.R2));
   }
 
   static fromFields(values: Field[]): Fp {
-    Field(values.length).assertEquals(6);
+    if (values.length !== 6) {
+      throw new Error("Invalid number of fields");
+    }
 
-    return new Fp({
-      value: values,
-    });
+    return new Fp({ value: values });
   }
 
   toFields(): Field[] {
@@ -82,7 +82,7 @@ export class Fp extends Struct({
   }
 
   static one(): Fp {
-    return Fp.R; // One in Montgomery form
+    return Fp.fromFields(Fp.R); // One in Montgomery form
   }
 
   /**
@@ -131,7 +131,7 @@ export class Fp extends Struct({
     });
 
     return [
-      Field(Gadgets.and(ret, Field((1n << 64n) - 1n), 128)), // lower 64 bits
+      Field(Gadgets.and(ret, Field(0xffff_ffff_ffff_ffffn), 128)), // lower 64 bits
       upper, // upper bits as carry
     ];
   }
@@ -148,17 +148,15 @@ export class Fp extends Struct({
       const borrowBig = borrow.toBigInt();
 
       // wrapping sub
-      return (aBig - bBig - borrowBig) & ((1n << 64n) - 1n);
+      return (aBig - bBig - borrowBig) & 0xffff_ffff_ffff_ffffn;
     });
 
     Gadgets.rangeCheck64(ret);
 
-    const newBorrow = Provable.if(
-      a.lessThan(b.add(borrow)),
-      Field(1),
-      Field(0)
-    );
-    return [ret, newBorrow];
+    const carry = Provable.witness(Field, () => {
+      return ret.toBigInt() >> 64n;
+    });
+    return [ret, carry];
   }
 
   /// Compute a + (b * c) + carry, returning the result and the new carry over.
@@ -179,7 +177,7 @@ export class Fp extends Struct({
       return ret.toBigInt() >> 64n;
     });
 
-    return [Field(Gadgets.and(ret, Field((1n << 64n) - 1n), 128)), upper];
+    return [Field(Gadgets.and(ret, Field(0xffff_ffff_ffff_ffffn), 128)), upper];
   }
 
   add(other: Fp): Fp {
@@ -407,7 +405,6 @@ export class Fp extends Struct({
       const result = t0.mul(Fp.INV);
       return result.toBigInt() % 0xffff_ffff_ffff_ffffn;
     });
-    k = Gadgets.and(k, Field((1n << 64n) - 1n), 64);
     [r0, carry] = Fp.mac(t0, k, Fp.MODULUS[0], Field(0));
     [r1, carry] = Fp.mac(t1, k, Fp.MODULUS[1], carry);
     [r2, carry] = Fp.mac(t2, k, Fp.MODULUS[2], carry);
@@ -661,7 +658,7 @@ export class Fp extends Struct({
 //     let value = field.toBigInt();
 //     const result: bigint[] = [];
 //     for (let i = 0; i < numLimbs; i++) {
-//       result.push(value & ((1n << 64n) - 1n));
+//       result.push(value & 0xffff_ffff_ffff_ffffn);
 //       value = value >> 64n;
 //     }
 //     return result;
@@ -688,7 +685,7 @@ export class Fp extends Struct({
 //     if (bitOffset > 0 && i < numLimbs - 1) {
 //       const overlapBits = andLarge(
 //         leftShiftLarge(limbs[i + 1], 64 - bitOffset, 384),
-//         Field((1n << 64n) - 1n),
+//         Field0xffff_ffff_ffff_ffffn,
 //         384
 //       );
 //       result = result.add(overlapBits.mul(1n << BigInt((i - limbOffset) * 64)));
@@ -875,7 +872,7 @@ export class Fp extends Struct({
 //     let value = field.toBigInt();
 //     const result: bigint[] = [];
 //     for (let i = 0; i < numLimbs; i++) {
-//       result.push(value & ((1n << 64n) - 1n));
+//       result.push(value & 0xffff_ffff_ffff_ffffn);
 //       value = value >> 64n;
 //     }
 //     return result;
@@ -952,7 +949,7 @@ export class Fp extends Struct({
 //     let value = field.toBigInt();
 //     const result: bigint[] = [];
 //     for (let i = 0; i < numLimbs; i++) {
-//       result.push(value & ((1n << 64n) - 1n));
+//       result.push(value & 0xffff_ffff_ffff_ffffn);
 //       value = value >> 64n;
 //     }
 //     return result;
@@ -997,7 +994,7 @@ export class Fp extends Struct({
 //     const shiftedValue = limbs[i].mul(1n << BigInt(bitOffset));
 //     const shiftedLimb = andLargeWithRangeCheck(
 //       shiftedValue,
-//       Field((1n << 64n) - 1n),
+//       Field0xffff_ffff_ffff_ffffn,
 //       384
 //     );
 //     result = result.add(shiftedLimb.mul(1n << BigInt((i + limbOffset) * 64)));

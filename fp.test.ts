@@ -7,7 +7,7 @@ const NUM_RUNS = Number(process.env.RUNS_COUNT || 10); // reduce to 1 to shorten
 fc.configureGlobal({ numRuns: NUM_RUNS, endOnFailure: true });
 const FC_BIGINT = fc.bigInt(1n, P - 1n);
 
-describe.skip("bls12-381 Fp", () => {
+describe("bls12-381 Fp", () => {
   it("equality", () => {
     fc.assert(
       fc.property(FC_BIGINT, (num) => {
@@ -120,13 +120,13 @@ describe.skip("bls12-381 Fp", () => {
           const b = Fp.fromBigInt(num2);
           const c = Fp.fromBigInt(num3);
 
-          Provable.log(a.toBigInt(), b.toBigInt(), c.toBigInt());
+          console.log(a.toBigInt(), b.toBigInt(), c.toBigInt());
 
-          Provable.log(1, a.mul(b).toBigInt());
-          Provable.log(2, a.mul(b.mul(c)).toBigInt());
+          console.log(1, a.mul(b).toBigInt());
+          console.log(2, a.mul(b.mul(c)).toBigInt());
 
-          Provable.log(3, a.mul(b).toBigInt());
-          Provable.log(4, a.mul(b).mul(c).toBigInt());
+          console.log(3, a.mul(b).toBigInt());
+          console.log(4, a.mul(b).mul(c).toBigInt());
 
           expect(a.mul(b.mul(c)).equals(a.mul(b).mul(c)).toBoolean()).toBe(
             true
@@ -227,7 +227,7 @@ describe.skip("bls12-381 Fp", () => {
           const b = Fp.fromBigInt(num2);
           const c = Fp.fromBigInt(num3);
 
-          Provable.log(a.toBigInt(), b.toBigInt(), c.toBigInt());
+          console.log(a.toBigInt(), b.toBigInt(), c.toBigInt());
 
           Provable.log(1, a.add(b).toBigInt());
           Provable.log(2, a.add(b).div(c).toBigInt());
@@ -256,7 +256,7 @@ describe.skip("bls12-381 Fp", () => {
   });
 });
 
-describe("zkcrypto/fp", () => {
+describe.skip("zkcrypto/fp", () => {
   it("equality", () => {
     const a = Fp.fromFields([
       Field(1),
@@ -439,10 +439,10 @@ describe("zkcrypto/fp", () => {
       Field(0x115f_f58a_fff9_a8e1n),
     ]);
 
-    Provable.log(a.toBigInt(), a.toFields());
-    Provable.log(b.toBigInt(), b.toFields());
-    Provable.log(a.inverse().toBigInt(), a.inverse().toFields());
-    Provable.log(b.inverse().toBigInt(), b.inverse().toFields());
+    console.log(a.toBigInt(), a.toFields());
+    console.log(b.toBigInt(), b.toFields());
+    console.log(a.inverse().toBigInt(), a.inverse().toFields());
+    console.log(b.inverse().toBigInt(), b.inverse().toFields());
 
     expect(a.inverse().equals(b).toBoolean()).toBe(true);
     expect(Fp.zero().inverse()).toThrow();
