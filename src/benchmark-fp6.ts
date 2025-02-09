@@ -46,6 +46,12 @@ export const fp6Program = ZkProgram({
         a.mulByNonresidue();
       },
     },
+    inverse: {
+      privateInputs: [Fp6],
+      async method(a: Fp6) {
+        a.inverse();
+      },
+    },
   },
 });
 

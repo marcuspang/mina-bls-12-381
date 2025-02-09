@@ -40,6 +40,12 @@ export const fp2Program = ZkProgram({
         a.frobeniusMap(1);
       },
     },
+    inverse: {
+      privateInputs: [Fp2],
+      async method(a: Fp2) {
+        a.inverse();
+      },
+    },
   },
 });
 
