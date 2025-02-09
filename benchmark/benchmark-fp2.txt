@@ -1,6 +1,6 @@
-add: 469 rows
-frobeniusMap: 12087 rows
-mul: 8257 rows
-negate: 318 rows
-square: 11457 rows
-sub: 786 rows
+add: 565 rows
+frobeniusMap: 12567 rows
+mul: 8593 rows
+negate: 415 rows
+square: 11745 rows
+sub: 978 rows

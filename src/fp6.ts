@@ -120,14 +120,19 @@ export class Fp6 extends Struct({
 
   square(): Fp6 {
     Provable.log("[Fp6] square", this);
-    const v0 = this.c0.square();
-    const v1 = this.c1.mul(this.c2).add(this.c1.mul(this.c2));
-    const v2 = this.c2.square();
-    const c0 = v0.add(v1.mulByNonresidue());
-    const c1 = this.c0.add(this.c1).square().sub(v0).sub(v1);
-    const c2 = this.c0.add(this.c2).square().sub(v0).sub(v2).add(v1);
+    const s0 = this.c0.square();
+    const ab = this.c0.mul(this.c1);
+    const s1 = ab.add(ab); // 2ab
+    const s2 = this.c0.sub(this.c1).add(this.c2).square(); // (a-b+c)²
+    const bc = this.c1.mul(this.c2);
+    const s3 = bc.add(bc); // 2bc
+    const s4 = this.c2.square();
 
-    return new Fp6({ c0, c1, c2 });
+    return new Fp6({
+      c0: s3.mulByNonresidue().add(s0), // 2bc·ξ + a²
+      c1: s4.mulByNonresidue().add(s1), // c²·ξ + 2ab
+      c2: s1.add(s2).add(s3).sub(s0).sub(s4), // 2ab + (a-b+c)² + 2bc - a² - c²
+    });
   }
 
   negate(): Fp6 {

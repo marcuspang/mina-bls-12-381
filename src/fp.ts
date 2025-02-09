@@ -133,9 +133,7 @@ export class Fp extends Struct({
     Gadgets.rangeCheckN(128, ret);
 
     const lower = Field(Gadgets.and(ret, Field(0xffff_ffff_ffff_ffffn), 128));
-    const upper = Provable.witness(Field, () => {
-      return ret.toBigInt() >> 64n;
-    });
+    const upper = Provable.witness(Field, () => ret.toBigInt() >> 64n);
 
     Gadgets.rangeCheck64(lower);
     Gadgets.rangeCheck64(upper);
@@ -157,8 +155,12 @@ export class Fp extends Struct({
       const borrowBig = borrow.toBigInt() >> 63n;
 
       // wrapping sub
-      return aBig - bBig - borrowBig;
+      return (
+        (aBig - bBig - borrowBig) & 0xffff_ffff_ffff_ffff_ffff_ffff_ffff_ffffn
+      );
     });
+    Gadgets.rangeCheckN(128, ret);
+
     const lower = Field(Gadgets.and(ret, Field(0xffff_ffff_ffff_ffffn), 128));
     const upper = Provable.witness(Field, () => ret.toBigInt() >> 64n);
 
